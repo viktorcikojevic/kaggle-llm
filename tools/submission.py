@@ -17,7 +17,7 @@ def main(
         output_path: str = "",
 ):
     pred_path = Path(pred_path)
-    assert pred_path.is_dir(), f"{pred_path} not found"
+    assert pred_path.is_file(), f"{pred_path} not found"
 
     if not output_path:
         output_path = "submission.csv"

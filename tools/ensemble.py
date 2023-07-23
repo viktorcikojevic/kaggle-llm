@@ -34,7 +34,7 @@ def main(
         csv = pd.read_csv(csv_path, index_col=0, header=0)
         scores_df = csv[[f"score{i}" for i in range(5)]]
         if sum_df is None:
-            sum_df = scores_df
+            sum_df = scores_df.copy()
         else:
             sum_df += scores_df
     for i in range(5):

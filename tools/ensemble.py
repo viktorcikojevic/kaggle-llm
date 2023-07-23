@@ -21,12 +21,12 @@ def main(
     pred_dir = Path(pred_dir)
     assert pred_dir.is_dir(), f"{pred_dir} not found"
 
-    csv_paths = list(pred_dir.glob("*.csv"))
+    csv_paths = [p for p in pred_dir.glob("*.csv") if p.name != "ensembled.csv"]
     csv_paths_str = json.dumps([str(x) for x in csv_paths], indent=4)
     logger.info(f"found the following files under {pred_dir}\n{csv_paths_str}")
 
     if not output_path:
-        output_path = "ensembled.csv"
+        output_path = pred_dir / "ensembled.csv"
     output_path = Path(output_path).resolve().absolute()
 
     sum_df = None

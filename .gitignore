@@ -11,3 +11,5 @@ deploy_build/
 IGNORE_ME*
 site-packages/
 checkpoint-*/
+preds/
+*.csv

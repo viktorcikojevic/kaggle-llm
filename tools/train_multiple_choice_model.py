@@ -1,6 +1,5 @@
-from src.kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer
-from transformers import AutoTokenizer
+from src.kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH
+from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer
 from datasets import Dataset
 from loguru import logger
 from datetime import datetime
@@ -49,7 +48,7 @@ def main(config_path: str):
         per_device_eval_batch_size=2,
         num_train_epochs=3,
         report_to="none",
-        output_dir=f"/home/clay/research/kaggle/kaggle_llm/work_dirs/{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}",
+        output_dir=str(WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"),
     )
     trainer = Trainer(
         model=model,

@@ -1,0 +1,5 @@
+models:
+  - "google-electra-base-discriminator-2023-07-23-19-54-55/checkpoint-500"
+  - "google-electra-base-discriminator-2023-07-23-19-54-55/checkpoint-1000"
+  - "google-electra-base-discriminator-2023-07-23-19-54-55/checkpoint-1500"
+  - "google-electra-base-discriminator-2023-07-23-19-54-55/checkpoint-2000"

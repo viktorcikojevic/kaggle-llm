@@ -1,0 +1,37 @@
+from pathlib import Path
+from loguru import logger
+import pandas as pd
+import numpy as np
+import argparse
+import sys
+
+
+logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
+
+
+CHOICES_ARR = np.array(list("ABCDE"))
+
+
+def main(
+        pred_path: str,
+        output_path: str = "",
+):
+    pred_path = Path(pred_path)
+    assert pred_path.is_dir(), f"{pred_path} not found"
+
+    if not output_path:
+        output_path = "submission.csv"
+    output_path = Path(output_path).resolve().absolute()
+
+    df = pd.read_csv(pred_path, index_col=0)
+    # in case there are many columns lying around from ensembling
+    df["prediction"].to_csv(output_path)
+    logger.info(f"wrote submission to {output_path}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pred_path")
+    parser.add_argument("--output-path", default="")
+    args, _ = parser.parse_known_args()
+    main(args.pred_path, args.output_path)

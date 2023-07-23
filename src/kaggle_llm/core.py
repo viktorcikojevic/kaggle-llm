@@ -1,12 +1,15 @@
 from typing import *
+from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
+from dataclasses import dataclass
+from pathlib import Path
+import pandas as pd
 import numpy as np
 import torch
-from datasets import Dataset
-from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer
-from transformers import AutoTokenizer
-from dataclasses import dataclass
-import pandas as pd
+
+
+ROOT_PATH = Path(__file__).resolve().absolute().parent.parent.parent
+WORK_DIRS_PATH = ROOT_PATH / "work_dirs"
+
 
 options = ["A", "B", "C", "D", "E"]
 option_to_index = {v: i for i, v in enumerate(options)}
@@ -56,6 +59,19 @@ class DataCollatorForMultipleChoice:
         batch = {k: v.view(batch_size, num_choices, -1) for k, v in batch.items()}
         batch["labels"] = torch.tensor(labels, dtype=torch.int64)
         return batch
+
+
+def infer_pred_from_scores(pred_df: pd.DataFrame):
+    CHOICES_ARR = np.array(list("ABCDE"))
+    pred_df = pred_df.copy()
+
+    def get_pred(row):
+        scores = row[[f"score{i}" for i in range(5)]]
+        pred_letters = CHOICES_ARR[np.argsort(scores)][:3].tolist()
+        return " ".join(pred_letters)
+
+    pred_df["prediction"] = pred_df[[f"score{i}" for i in range(5)]].apply(get_pred, axis=1)
+    return pred_df
 
 
 def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):

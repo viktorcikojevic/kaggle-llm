@@ -1,12 +1,8 @@
 from pathlib import Path
-from loguru import logger
 import pandas as pd
 import numpy as np
 import argparse
 import sys
-
-
-logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
 
 
 CHOICES_ARR = np.array(list("ABCDE"))
@@ -26,7 +22,7 @@ def main(
     df = pd.read_csv(pred_path, index_col=0)
     # in case there are many columns lying around from ensembling
     df["prediction"].to_csv(output_path)
-    logger.info(f"wrote submission to {output_path}")
+    print(f"wrote submission to {output_path}")
 
 
 if __name__ == "__main__":

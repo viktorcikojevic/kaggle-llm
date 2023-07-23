@@ -1,4 +1,4 @@
-from src.kaggle_llm.core import get_map3
+from kaggle_llm.core import get_map3
 from pathlib import Path
 import pandas as pd
 import argparse

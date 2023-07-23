@@ -1,4 +1,4 @@
-from src.kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH
+from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer
 from datasets import Dataset
 from loguru import logger

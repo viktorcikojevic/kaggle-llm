@@ -1,4 +1,4 @@
-from src.kaggle_llm.core import (
+from kaggle_llm.core import (
     ROOT_PATH,
     multiple_choice_preprocess,
     DataCollatorForMultipleChoice,
@@ -9,15 +9,10 @@ from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer
 from sklearn.preprocessing import normalize
 from datasets import Dataset
 from pathlib import Path
-from loguru import logger
 import pandas as pd
 import argparse
 import yaml
 import json
-import sys
-
-
-logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
 
 
 def main(
@@ -32,25 +27,25 @@ def main(
     with open(ROOT_PATH / "configs" / "submission.yaml", "rb") as f:
         submission_config = yaml.load(f, yaml.FullLoader)
 
-    logger.info(json.dumps(submission_config, indent=4))
+    print(json.dumps(submission_config, indent=4))
     models = submission_config["models"]
 
-    logger.info("initting dataset")
+    print("initting dataset")
     df = pd.read_csv(input_df_path)
     dataset = Dataset.from_pandas(df)
-    logger.info("initted dataset")
+    print("initted dataset")
 
     for i, load_from in enumerate(models):
-        logger.info(f"initting models [{i}]")
+        print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
         model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
-        logger.info(f"initted models [{i}]")
+        print(f"initted models [{i}]")
 
-        logger.info(f"initting tokenizer and trainer [{i}]")
+        print(f"initting tokenizer and trainer [{i}]")
         tokenized_dataset = dataset.map(
             lambda example: multiple_choice_preprocess(tokenizer, example),
-            remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"]
+            remove_columns=["prompt", "A", "B", "C", "D", "E"] + (["answer"] if "answer" in df.columns else [])
         )
         trainer = Trainer(
             model=model,
@@ -59,11 +54,11 @@ def main(
             data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
             train_dataset=None,
         )
-        logger.info(f"initted tokenizer and trainer [{i}]")
+        print(f"initted tokenizer and trainer [{i}]")
 
-        logger.info(f"predicting [{i}]")
+        print(f"predicting [{i}]")
         preds = trainer.predict(tokenized_dataset)
-        logger.info(f"predicted [{i}]")
+        print(f"predicted [{i}]")
 
         model_output_path = output_dir / (load_from.replace("/", "-") + ".csv")
         normalised_preds = normalize(-preds.predictions)

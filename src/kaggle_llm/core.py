@@ -42,7 +42,7 @@ class DataCollatorForMultipleChoice:
         num_choices = len(features[0]["input_ids"])
         flattened_features = [
             [
-                {k: v[i] for k, v in feature.items()}
+                {k: v[i] for k, v in feature.items() if k not in ("label", "labels")}
                 for i in range(num_choices)
             ] for feature in features
         ]

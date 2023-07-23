@@ -1,0 +1,13 @@
+data/
+.idea/
+*.pclprof
+__pycache__/
+*.pyc
+work_dirs/
+.ipynb_checkpoints
+deploy_build/
+**/submission.csv
+*.whl
+IGNORE_ME*
+site-packages/
+checkpoint-*/

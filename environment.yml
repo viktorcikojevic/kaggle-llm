@@ -1,0 +1,41 @@
+name: kaggle_llm
+channels:
+  - pytorch
+  - nvidia
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - pytorch-cuda=11.7
+  - cudatoolkit=11.7
+  - cudnn=8.1.0
+  - pandas
+  - pip==23.1.1
+  - numpy
+  - seaborn
+  - tqdm
+  - ipython
+  - jupyter
+  - scikit-learn
+  - matplotlib
+  - scipy
+  - tensorboard
+  - typer
+  - torchinfo
+  - pytest
+  - pip:
+    - line-profiler-pycharm
+    - wandb
+    - onnx
+    - onnxsim
+    - onnxruntime-gpu
+    - optuna
+    - ipdb
+    - prettytable
+    - transformers
+    - datasets
+    - evaluate
+    - accelerate
+    - peft
+    - loguru

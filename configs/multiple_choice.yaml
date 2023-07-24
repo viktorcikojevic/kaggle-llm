@@ -1,6 +1,11 @@
 inputs:
-  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
-  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam-splitted/train.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam-splitted/train.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/google-electra-base-discriminator"
 load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
+fold:
+  num: 0
+  of: 5

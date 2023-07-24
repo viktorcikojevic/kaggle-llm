@@ -1,5 +1,5 @@
 models:
-  - "google-electra-base-discriminator-2023-07-23-21-46-32/checkpoint-500"
-#  - "google-electra-base-discriminator-2023-07-23-21-46-32/checkpoint-1000"
-#  - "google-electra-base-discriminator-2023-07-23-21-46-32/checkpoint-1500"
-#  - "google-electra-base-discriminator-2023-07-23-21-46-32/checkpoint-2000"
+#  - "deberta-v3-large-notebook-weights-2023-07-24-00-09-08/checkpoint-500"
+#  - "deberta-v3-large-notebook-weights-2023-07-24-00-09-08/checkpoint-1000"
+#  - "deberta-v3-large-notebook-weights-2023-07-24-00-09-08/checkpoint-1500"
+  - "deberta-v3-large-notebook-weights-2023-07-24-00-09-08/checkpoint-2000"

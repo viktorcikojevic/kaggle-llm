@@ -1,6 +1,6 @@
 inputs:
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam-splitted/train.csv"
   - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 

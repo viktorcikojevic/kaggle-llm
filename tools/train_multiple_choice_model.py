@@ -3,6 +3,7 @@ from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer,
 from datasets import Dataset
 from loguru import logger
 from datetime import datetime
+from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
 from typing import *
 import pandas as pd
@@ -17,9 +18,10 @@ logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
 
 def compute_metrics(preds: EvalPrediction) -> Dict:
     ids = list(range(len(preds.label_ids)))
+    normalised_preds = normalize(-preds.predictions)
     preds_df = pd.DataFrame({
         "id": ids,
-        **{f"score{k}": preds.predictions[:, k] for k in range(5)}
+        **{f"score{k}": normalised_preds[:, k] for k in range(5)}
     }).set_index("id")
     preds_df = infer_pred_from_scores(preds_df)
     label_df = pd.DataFrame({
@@ -40,7 +42,11 @@ def main(config_path: str):
 
     logger.info("loading data")
     dfs = [pd.read_csv(ip) for ip in input_paths]
-    df = pd.concat(dfs, axis=0)
+    df = pd.concat(dfs, axis=0).reset_index()
+    if "id" in df:
+        df = df.drop("id", axis=1)
+    if "index" in df:
+        df = df.drop("index", axis=1)
     logger.info("loaded data")
 
     logger.info("initting models")
@@ -66,6 +72,7 @@ def main(config_path: str):
 
     logger.info("initting trainer")
     model_name = load_from.split("/")[-1]
+    model_output_dir = WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     training_args = TrainingArguments(
         metric_for_best_model="map3",
         greater_is_better=True,
@@ -76,10 +83,10 @@ def main(config_path: str):
         evaluation_strategy="epoch",
         save_strategy="epoch",
         per_device_eval_batch_size=2,
-        num_train_epochs=3,
-        save_total_limit=3,
+        num_train_epochs=10,
+        save_total_limit=2,
         report_to="none",
-        output_dir=str(WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"),
+        output_dir=str(model_output_dir),
     )
     trainer = Trainer(
         model=model,
@@ -96,6 +103,7 @@ def main(config_path: str):
     logger.info("initting trainer")
 
     trainer.train()
+    trainer.save_model(str(model_output_dir / "best_map3"))
 
 
 if __name__ == "__main__":

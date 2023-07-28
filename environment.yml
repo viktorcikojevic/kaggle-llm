@@ -39,3 +39,10 @@ dependencies:
     - accelerate
     - peft
     - loguru
+    - sentencepiece
+    - wikipedia
+    - nvidia-ml-py3
+    - optimum
+    - bitsandbytes
+    - openai
+    - pydantic

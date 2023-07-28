@@ -1,5 +1,8 @@
 from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, get_map3, infer_pred_from_scores
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EvalPrediction, EarlyStoppingCallback
+from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.llama.modeling_llama import LlamaModel
+# from peft import prepare_model_for_int8_training
 from datasets import Dataset
 from loguru import logger
 from datetime import datetime
@@ -11,6 +14,11 @@ import argparse
 import json
 import yaml
 import sys
+
+
+# from transformers.models.deberta_v2.modeling_deberta_v2 import DebertaV2Config, DebertaV2Model, DebertaV2ForMultipleChoice
+
+AutoModelForMultipleChoice.register(LlamaConfig, LlamaModel, exist_ok=True)
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
@@ -41,24 +49,35 @@ def main(config_path: str):
     logger.info(json.dumps(config, indent=4))
 
     logger.info("loading data")
-    dfs = [pd.read_csv(ip) for ip in input_paths]
-    df = pd.concat(dfs, axis=0).reset_index()
-    if "id" in df:
-        df = df.drop("id", axis=1)
-    if "index" in df:
-        df = df.drop("index", axis=1)
+    kf = KFold(n_splits=config["fold"]["of"], shuffle=True, random_state=42)
+    train_dfs = []
+    val_dfs = []
+    for ip in input_paths:
+        df = pd.read_csv(ip)
+        if "id" in df:
+            df = df.drop("id", axis=1)
+        if "index" in df:
+            df = df.drop("index", axis=1)
+        train_idx, val_idx = list(kf.split(df))[config["fold"]["num"]]
+        train_df = df.loc[train_idx, :]
+        val_df = df.loc[val_idx, :]
+        train_dfs.append(train_df)
+        val_dfs.append(val_df)
+
+    train_df = pd.concat(train_dfs, axis=0).reset_index()
+    val_df = pd.concat(val_dfs, axis=0).reset_index()
     logger.info("loaded data")
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
+    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
+    # model = prepare_model_for_int8_training(model)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
     logger.info("initted models")
 
     logger.info("initting dataset")
-    kf = KFold(n_splits=config["fold"]["of"], shuffle=True, random_state=42)
-    train_idx, val_idx = list(kf.split(df))[config["fold"]["num"]]
-    train_dataset = Dataset.from_pandas(df.loc[train_idx, :])
-    val_dataset = Dataset.from_pandas(df.loc[val_idx, :])
+    train_dataset = Dataset.from_pandas(train_df)
+    val_dataset = Dataset.from_pandas(val_df)
     train_tokenized_dataset = train_dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
         remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"]
@@ -67,7 +86,7 @@ def main(config_path: str):
         lambda example: multiple_choice_preprocess(tokenizer, example),
         remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"]
     )
-    logger.info(f"splitted dataset of size {len(df)} -> {len(train_idx)} & {len(val_idx)}")
+    logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -87,6 +106,9 @@ def main(config_path: str):
         save_total_limit=2,
         report_to="none",
         output_dir=str(model_output_dir),
+        # gradient_checkpointing=True,
+        # gradient_accumulation_steps=4,
+        # fp16=True,
     )
     trainer = Trainer(
         model=model,

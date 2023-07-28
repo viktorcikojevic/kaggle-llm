@@ -5,6 +5,8 @@ from kaggle_llm.core import (
     WORK_DIRS_PATH,
     infer_pred_from_scores,
 )
+from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.llama.modeling_llama import LlamaModel
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer
 from sklearn.preprocessing import normalize
 from datasets import Dataset
@@ -13,6 +15,9 @@ import pandas as pd
 import argparse
 import yaml
 import json
+
+
+AutoModelForMultipleChoice.register(LlamaConfig, LlamaModel, exist_ok=True)
 
 
 def main(
@@ -39,6 +44,7 @@ def main(
         print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
+        # model = AutoModelForMultipleChoice.from_pretrained(abs_load_from, load_in_4bit=True)
         model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
         print(f"initted models [{i}]")
 

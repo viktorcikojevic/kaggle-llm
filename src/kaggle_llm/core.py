@@ -139,5 +139,9 @@ def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenize
     dataset = Dataset.from_pandas(df)
     return dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
-        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in df else [])
+        remove_columns=(
+            ["prompt", "A", "B", "C", "D", "E", "answer"]
+            + (["topic"] if "topic" in df else [])
+            + (["index"] if "index" in df else [])
+        )
     )

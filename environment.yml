@@ -46,3 +46,4 @@ dependencies:
     - bitsandbytes
     - openai
     - pydantic
+    - deepspeed

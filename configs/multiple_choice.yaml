@@ -1,7 +1,7 @@
 inputs:
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions.csv"
   - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 
 #load_from: "bigscience/mt0-large"
@@ -11,8 +11,10 @@ inputs:
 load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_xl"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
 
+report_to: ["wandb"]
+#report_to: []
 lr: 5e-6
-peft_lr: 1e-3
+peft_lr: 1e-5
 fold:
   num: 0
   of: 5

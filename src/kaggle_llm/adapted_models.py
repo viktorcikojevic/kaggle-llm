@@ -167,7 +167,7 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             else None
         )
 
-        outputs = self.model.forward(  # TODO(Sumo)
+        outputs = self.model.forward(
             input_ids=flat_input_ids,
             attention_mask=flat_attention_mask,
             inputs_embeds=flat_inputs_embeds,

@@ -50,10 +50,12 @@ def main(config_path: str):
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    r = 2048
+    lora_alpha = r * 2
     peft_config = LoraConfig(
         inference_mode=False,
-        r=8,
-        lora_alpha=32,
+        r=r,
+        lora_alpha=lora_alpha,
         lora_dropout=0.1,
     )
     # model = prepare_model_for_int8_training(model)
@@ -80,9 +82,9 @@ def main(config_path: str):
         evaluation_strategy="epoch",
         save_strategy="epoch",
         per_device_eval_batch_size=2,
-        num_train_epochs=20,
+        num_train_epochs=200,
         save_total_limit=2,
-        report_to=["wandb"],
+        report_to=config["report_to"],
         output_dir=str(model_output_dir),
         remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
         label_names=["labels"],  # for peft

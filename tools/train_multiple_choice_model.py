@@ -1,14 +1,11 @@
-from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, get_map3, infer_pred_from_scores
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EvalPrediction, EarlyStoppingCallback
+from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, compute_metrics
+from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
 from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.llama.modeling_llama import LlamaModel
-# from peft import prepare_model_for_int8_training
 from datasets import Dataset
 from loguru import logger
 from datetime import datetime
-from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
-from typing import *
 import pandas as pd
 import argparse
 import json
@@ -16,28 +13,10 @@ import yaml
 import sys
 
 
-# from transformers.models.deberta_v2.modeling_deberta_v2 import DebertaV2Config, DebertaV2Model, DebertaV2ForMultipleChoice
-
 AutoModelForMultipleChoice.register(LlamaConfig, LlamaModel, exist_ok=True)
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
-
-
-def compute_metrics(preds: EvalPrediction) -> Dict:
-    ids = list(range(len(preds.label_ids)))
-    normalised_preds = normalize(-preds.predictions)
-    preds_df = pd.DataFrame({
-        "id": ids,
-        **{f"score{k}": normalised_preds[:, k] for k in range(5)}
-    }).set_index("id")
-    preds_df = infer_pred_from_scores(preds_df)
-    label_df = pd.DataFrame({
-        "id": ids,
-        "answer": ["ABCDE"[label] for label in preds.label_ids]
-    })
-    map3 = get_map3(label_df=label_df, pred_df=preds_df)
-    return {"map3": map3}
 
 
 def main(config_path: str):
@@ -64,14 +43,17 @@ def main(config_path: str):
         train_dfs.append(train_df)
         val_dfs.append(val_df)
 
+    model_name = load_from.split("/")[-1]
+    model_output_dir = WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    model_output_dir.mkdir(exist_ok=True, parents=True)
+
     train_df = pd.concat(train_dfs, axis=0).reset_index()
     val_df = pd.concat(val_dfs, axis=0).reset_index()
+    val_df.to_csv(model_output_dir / "val_df.csv")
     logger.info("loaded data")
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
-    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
-    # model = prepare_model_for_int8_training(model)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
     logger.info("initted models")
 
@@ -80,18 +62,16 @@ def main(config_path: str):
     val_dataset = Dataset.from_pandas(val_df)
     train_tokenized_dataset = train_dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
-        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"]
+        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in train_df else [])
     )
     val_tokenized_dataset = val_dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
-        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"]
+        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in val_df else [])
     )
     logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("initted dataset")
 
     logger.info("initting trainer")
-    model_name = load_from.split("/")[-1]
-    model_output_dir = WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     training_args = TrainingArguments(
         metric_for_best_model="map3",
         greater_is_better=True,
@@ -102,7 +82,7 @@ def main(config_path: str):
         evaluation_strategy="epoch",
         save_strategy="epoch",
         per_device_eval_batch_size=2,
-        num_train_epochs=10,
+        num_train_epochs=20,
         save_total_limit=2,
         report_to="none",
         output_dir=str(model_output_dir),
@@ -119,7 +99,7 @@ def main(config_path: str):
         eval_dataset=val_tokenized_dataset,
         compute_metrics=compute_metrics,
         callbacks=[
-            EarlyStoppingCallback(early_stopping_patience=2),
+            EarlyStoppingCallback(early_stopping_patience=4),
         ]
     )
     logger.info("initting trainer")

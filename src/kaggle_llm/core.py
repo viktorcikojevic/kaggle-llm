@@ -1,5 +1,7 @@
 from typing import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
+from transformers import EvalPrediction
+from sklearn.preprocessing import normalize
 from dataclasses import dataclass
 from pathlib import Path
 import pandas as pd
@@ -88,3 +90,19 @@ def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):
     for k in range(3):
         map3 += ranks_to_scores[k] * (joined_df[f"pred{k}"] == joined_df[f"answer"]).sum() / len(joined_df)
     return map3
+
+
+def compute_metrics(preds: EvalPrediction) -> Dict:
+    ids = list(range(len(preds.label_ids)))
+    normalised_preds = normalize(-preds.predictions)
+    preds_df = pd.DataFrame({
+        "id": ids,
+        **{f"score{k}": normalised_preds[:, k] for k in range(5)}
+    }).set_index("id")
+    preds_df = infer_pred_from_scores(preds_df)
+    label_df = pd.DataFrame({
+        "id": ids,
+        "answer": ["ABCDE"[label] for label in preds.label_ids]
+    })
+    map3 = get_map3(label_df=label_df, pred_df=preds_df)
+    return {"map3": map3}

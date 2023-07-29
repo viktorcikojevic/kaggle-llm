@@ -106,7 +106,7 @@ class MT5ModelForMultipleChoice(MT5PreTrainedModel):
         )
 
 
-AutoModelForMultipleChoice.register(MT5Config, MT5ModelForMultipleChoice, exist_ok=True)
+AutoModelForMultipleChoice.register(MT5Config, MT5ModelForMultipleChoice)
 
 
 # =====
@@ -199,4 +199,4 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         )
 
 
-AutoModelForMultipleChoice.register(LlamaConfig, LlamaModelForMultipleChoice, exist_ok=True)
+AutoModelForMultipleChoice.register(LlamaConfig, LlamaModelForMultipleChoice)

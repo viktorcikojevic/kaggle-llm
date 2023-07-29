@@ -6,8 +6,8 @@ from kaggle_llm.core import (
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
 )
-from transformers import AutoModelForMultipleChoice, AutoModelForSeq2SeqLM, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
-from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training, TaskType
+from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
+from peft import get_peft_model, LoraConfig
 from loguru import logger
 from datetime import datetime
 import argparse

@@ -66,7 +66,7 @@ def main(config_path: str):
         metric_for_best_model="map3",
         greater_is_better=True,
         warmup_ratio=0.8,
-        learning_rate=5e-6,
+        learning_rate=float(config["lr"]),
         per_device_train_batch_size=1,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
@@ -74,7 +74,7 @@ def main(config_path: str):
         per_device_eval_batch_size=2,
         num_train_epochs=20,
         save_total_limit=2,
-        report_to="none",
+        report_to=["wandb"],
         output_dir=str(model_output_dir),
         # fp16=True,
         # gradient_checkpointing=True,
@@ -91,7 +91,7 @@ def main(config_path: str):
         compute_metrics=compute_metrics,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=4),
-        ]
+        ],
     )
     logger.info("initting trainer")
 

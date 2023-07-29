@@ -2,6 +2,7 @@ from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
     WORK_DIRS_PATH,
+    ROOT_PATH,
     compute_metrics,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
@@ -14,6 +15,14 @@ import argparse
 import json
 import yaml
 import sys
+import os
+
+
+os.environ["MASTER_ADDR"] = "localhost"
+os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
+os.environ["RANK"] = "0"
+os.environ["LOCAL_RANK"] = "0"
+os.environ["WORLD_SIZE"] = "1"
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
@@ -65,7 +74,7 @@ def main(config_path: str):
         metric_for_best_model="map3",
         greater_is_better=True,
         warmup_ratio=0.8,
-        learning_rate=5e-6,
+        learning_rate=float(config["peft_lr"]),
         per_device_train_batch_size=1,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
@@ -73,10 +82,11 @@ def main(config_path: str):
         per_device_eval_batch_size=2,
         num_train_epochs=20,
         save_total_limit=2,
-        report_to="none",
+        report_to=["wandb"],
         output_dir=str(model_output_dir),
         remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
         label_names=["labels"],  # for peft
+        # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
         # fp16=True,
         # gradient_checkpointing=True,
         # gradient_accumulation_steps=4,

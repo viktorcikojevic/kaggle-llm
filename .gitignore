@@ -13,3 +13,4 @@ site-packages/
 checkpoint-*/
 preds/
 *.csv
+wandb/

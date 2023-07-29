@@ -1,3 +1,4 @@
+from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     ROOT_PATH,
     multiple_choice_preprocess,
@@ -15,9 +16,6 @@ import pandas as pd
 import argparse
 import yaml
 import json
-
-
-AutoModelForMultipleChoice.register(LlamaConfig, LlamaModel, exist_ok=True)
 
 
 def main(
@@ -44,8 +42,8 @@ def main(
         print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
-        # model = AutoModelForMultipleChoice.from_pretrained(abs_load_from, load_in_4bit=True)
         model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
+        # model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")

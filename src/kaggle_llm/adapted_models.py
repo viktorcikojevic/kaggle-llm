@@ -115,7 +115,6 @@ AutoModelForMultipleChoice.register(MT5Config, MT5ModelForMultipleChoice, exist_
 class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
     def __init__(self, config: LlamaConfig):
         LlamaPreTrainedModel.__init__(self, config)
-        self.shared = nn.Embedding(config.vocab_size, config.d_model)
         self.model = LlamaModel(config)
 
         config.pooler_hidden_size = getattr(config, "pooler_hidden_size", config.hidden_size)
@@ -126,8 +125,7 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         self.pooler = ContextPooler(config)
         output_dim = self.pooler.output_dim
         self.classifier = nn.Linear(output_dim, 1)
-        drop_out = getattr(config, "cls_dropout", None)
-        drop_out = self.config.dropout_rate if drop_out is None else drop_out
+        drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
         self.model_parallel = False
         self.init_weights()

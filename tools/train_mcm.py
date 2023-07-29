@@ -1,8 +1,6 @@
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, compute_metrics
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
-from transformers.models.llama.configuration_llama import LlamaConfig
-from transformers.models.llama.modeling_llama import LlamaModel
 from datasets import Dataset
 from loguru import logger
 from datetime import datetime
@@ -12,9 +10,6 @@ import argparse
 import json
 import yaml
 import sys
-
-
-AutoModelForMultipleChoice.register(LlamaConfig, LlamaModel, exist_ok=True)
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
@@ -56,6 +51,7 @@ def main(config_path: str):
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")

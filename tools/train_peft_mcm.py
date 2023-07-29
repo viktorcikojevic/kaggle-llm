@@ -39,22 +39,17 @@ def main(config_path: str):
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
-    use_peft = True
-    print(f"{use_peft = }")
-    if use_peft:
-        # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
-        model = AutoModelForMultipleChoice.from_pretrained(load_from)
-        peft_config = LoraConfig(
-            inference_mode=False,
-            r=8,
-            lora_alpha=32,
-            lora_dropout=0.1,
-        )
-        # model = prepare_model_for_int8_training(model)
-        model = get_peft_model(model, peft_config)
-        logger.info(model.print_trainable_parameters())
-    else:
-        model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
+    model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    peft_config = LoraConfig(
+        inference_mode=False,
+        r=8,
+        lora_alpha=32,
+        lora_dropout=0.1,
+    )
+    # model = prepare_model_for_int8_training(model)
+    model = get_peft_model(model, peft_config)
+    logger.info(model.print_trainable_parameters())
     model_name = load_from.split("/")[-1]
     model_output_dir = WORK_DIRS_PATH / f"peft-{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     model_output_dir.mkdir(exist_ok=True, parents=True)
@@ -101,6 +96,7 @@ def main(config_path: str):
     logger.info("initting trainer")
 
     trainer.train()
+    trainer.model = trainer.model.merge_and_unload()
     trainer.save_model(str(model_output_dir / "best_map3"))
 
 

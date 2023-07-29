@@ -4,12 +4,12 @@ inputs:
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions.csv"
   - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 
-load_from: "bigscience/mt0-small"
+#load_from: "bigscience/mt0-small"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
 #load_from: "meta-llama/Llama-2-70b-hf"
 #load_from: "chargoddard/llama2-22b"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/huggyllama_7b"
-#load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
+load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
 fold:
   num: 0
   of: 5

@@ -1,5 +1,12 @@
 from kaggle_llm.adapted_models import *
-from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, compute_metrics
+from kaggle_llm.core import (
+    multiple_choice_preprocess,
+    DataCollatorForMultipleChoice,
+    WORK_DIRS_PATH,
+    compute_metrics,
+    load_train_and_val_df,
+    get_tokenize_dataset_from_df,
+)
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
 from datasets import Dataset
 from loguru import logger
@@ -24,50 +31,28 @@ def main(config_path: str):
     logger.info(json.dumps(config, indent=4))
 
     logger.info("loading data")
-    kf = KFold(n_splits=config["fold"]["of"], shuffle=True, random_state=42)
-    train_dfs = []
-    val_dfs = []
-    for ip in input_paths:
-        df = pd.read_csv(ip)
-        if "id" in df:
-            df = df.drop("id", axis=1)
-        if "index" in df:
-            df = df.drop("index", axis=1)
-        train_idx, val_idx = list(kf.split(df))[config["fold"]["num"]]
-        train_df = df.loc[train_idx, :]
-        val_df = df.loc[val_idx, :]
-        train_dfs.append(train_df)
-        val_dfs.append(val_df)
-
+    train_df, val_df = load_train_and_val_df(
+        input_paths=input_paths,
+        i_fold=config["fold"]["num"],
+        total_fold=config["fold"]["of"],
+    )
     model_name = load_from.split("/")[-1]
     model_output_dir = WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     model_output_dir.mkdir(exist_ok=True, parents=True)
-
-    train_df = pd.concat(train_dfs, axis=0).reset_index()
-    val_df = pd.concat(val_dfs, axis=0).reset_index()
     val_df.to_csv(model_output_dir / "val_df.csv")
+    logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("loaded data")
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
-    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")
 
     logger.info("initting dataset")
-    train_dataset = Dataset.from_pandas(train_df)
-    val_dataset = Dataset.from_pandas(val_df)
-    train_tokenized_dataset = train_dataset.map(
-        lambda example: multiple_choice_preprocess(tokenizer, example),
-        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in train_df else [])
-    )
-    val_tokenized_dataset = val_dataset.map(
-        lambda example: multiple_choice_preprocess(tokenizer, example),
-        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in val_df else [])
-    )
-    logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
+    train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
+    val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")

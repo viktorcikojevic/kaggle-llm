@@ -2,7 +2,9 @@ from typing import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
 from transformers import EvalPrediction
 from sklearn.preprocessing import normalize
+from sklearn.model_selection import KFold
 from dataclasses import dataclass
+from datasets import Dataset
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -106,3 +108,36 @@ def compute_metrics(preds: EvalPrediction) -> Dict:
     })
     map3 = get_map3(label_df=label_df, pred_df=preds_df)
     return {"map3": map3}
+
+
+def load_train_and_val_df(
+        input_paths: List[Union[str, Path]],
+        i_fold: int,
+        total_fold: int,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    kf = KFold(n_splits=total_fold, shuffle=True, random_state=42)
+    train_dfs = []
+    val_dfs = []
+    for ip in input_paths:
+        df = pd.read_csv(ip)
+        if "id" in df:
+            df = df.drop("id", axis=1)
+        if "index" in df:
+            df = df.drop("index", axis=1)
+        train_idx, val_idx = list(kf.split(df))[i_fold]
+        train_df = df.loc[train_idx, :]
+        val_df = df.loc[val_idx, :]
+        train_dfs.append(train_df)
+        val_dfs.append(val_df)
+
+    train_df = pd.concat(train_dfs, axis=0).reset_index()
+    val_df = pd.concat(val_dfs, axis=0).reset_index()
+    return train_df, val_df
+
+
+def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
+    dataset = Dataset.from_pandas(df)
+    return dataset.map(
+        lambda example: multiple_choice_preprocess(tokenizer, example),
+        remove_columns=["prompt", "A", "B", "C", "D", "E", "answer"] + (["topic"] if "topic" in df else [])
+    )

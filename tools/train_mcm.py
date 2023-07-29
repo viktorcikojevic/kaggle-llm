@@ -1,3 +1,4 @@
+from kaggle_llm.adapted_models import *
 from kaggle_llm.core import multiple_choice_preprocess, DataCollatorForMultipleChoice, WORK_DIRS_PATH, compute_metrics
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
 from transformers.models.llama.configuration_llama import LlamaConfig
@@ -55,6 +56,8 @@ def main(config_path: str):
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
+    logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")
 
     logger.info("initting dataset")

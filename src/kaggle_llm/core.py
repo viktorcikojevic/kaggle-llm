@@ -120,6 +120,8 @@ def load_train_and_val_df(
     val_dfs = []
     for ip in input_paths:
         df = pd.read_csv(ip)
+        if "Unnamed: 0" in df:
+            df = df.drop("Unnamed: 0", axis=1)
         if "id" in df:
             df = df.drop("id", axis=1)
         if "index" in df:

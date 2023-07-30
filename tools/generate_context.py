@@ -1,7 +1,9 @@
 from kaggle_llm.core import (
     ROOT_PATH,
+    count_words,
 )
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 from typing import *
 from sentence_transformers import SentenceTransformer
@@ -12,6 +14,22 @@ import torch
 import faiss
 import json
 import yaml
+
+
+too_long_prompt_wc = 80
+context_cutoff_len = 70
+
+
+def split_text_into_chunks(text: str, chunk_size: int) -> List[str]:
+    tokens = [i for i in text.split() if len(i) > 0]
+    start = 0
+    end = chunk_size
+    chunks = []
+    while end < len(tokens):
+        chunks.append(" ".join(tokens[start: end]))
+        start += chunk_size
+        end += chunk_size
+    return chunks
 
 
 @torch.no_grad()
@@ -36,16 +54,21 @@ def get_sentence_embeddings(
 
     for _, row in tqdm(filtered_wiki_df.iterrows(), total=len(filtered_wiki_df)):
         _, sentence_offsets = bf.text_to_sentences_and_offsets(row["text"])
-        for i, (start_idx, end_idx) in enumerate(sentence_offsets):
+        for start_idx, end_idx in sentence_offsets:
             if (end_idx - start_idx) > 3:
                 sentences_df.append({
                     "page": row["page"],
-                    "i_sentence": i,
+                    "i_sentence": len(sentences_df),
                     "text": row["text"][start_idx: end_idx],
                 })
 
     sentences_df = pd.DataFrame.from_records(sentences_df)
     print(f"extracted: {len(sentences_df)} sentences")
+
+    print(f"dropping too long sentences")
+    pass_indices = sentences_df.loc[sentences_df["text"].apply(count_words) < context_cutoff_len, "text"].index
+    print(f"keeping {len(pass_indices) / len(sentences_df) * 100} % at cutoff {context_cutoff_len}")
+    sentences_df = sentences_df.loc[pass_indices, :].reset_index().copy()
 
     sentence_embeddings = model.encode(
         sentences_df["text"].values,
@@ -124,8 +147,26 @@ def main(
                 how="left",
             )["text"]
 
-        for i in range(k):
-            train_df["prompt"] = train_df["prompt"] + f"\ncontext {i}: " + train_df[f"context_{i}"]
+        assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts"
+
+        def join_prompt_with_context(_row):
+            joined = _row["prompt"]
+            current_len = count_words(joined)
+            already_added_context = False
+            _i_context = 0
+            for _i in range(k):
+                context = _row[f"context_{_i}"]
+                context_len = count_words(context)
+                if already_added_context and (current_len + context_len > too_long_prompt_wc):
+                    continue
+                current_len += context_len
+                already_added_context = True
+                joined += f"\ncontext {_i_context}: " + context
+                _i_context += 1
+            return joined
+
+        train_df["prompt"] = train_df.apply(join_prompt_with_context, axis=1)
+        assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts after proc"
         train_df = train_df.drop(
             (
                 ["prompt_and_answer"]
@@ -136,6 +177,7 @@ def main(
         )
 
         out_path = (out_dir / train_df_path.name).resolve().absolute()
+        print(train_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
         train_df.to_csv(out_path)
         print(f"saved: {out_path}")
 

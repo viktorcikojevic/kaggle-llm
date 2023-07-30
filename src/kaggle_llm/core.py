@@ -19,6 +19,10 @@ options = ["A", "B", "C", "D", "E"]
 option_to_index = {v: i for i, v in enumerate(options)}
 
 
+def count_words(text):
+    return sum([1 for i in text.split() if len(i) > 0])
+
+
 def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any]):
     """
     The example is expected to be a dictionary with keys "prompt", "A", "B", "C", "D", "E", and "answer".
@@ -134,6 +138,10 @@ def load_train_and_val_df(
 
     train_df = pd.concat(train_dfs, axis=0).reset_index()
     val_df = pd.concat(val_dfs, axis=0).reset_index()
+    print("train:")
+    print(train_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
+    print("val:")
+    print(val_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
     return train_df, val_df
 
 

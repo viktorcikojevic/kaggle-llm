@@ -42,6 +42,10 @@ def main(config_path: str):
         i_fold=config["fold"]["num"],
         total_fold=config["fold"]["of"],
     )
+    model_name = load_from.split("/")[-1]
+    model_output_dir = WORK_DIRS_PATH / f"peft-{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    model_output_dir.mkdir(exist_ok=True, parents=True)
+    train_df.to_csv(model_output_dir / "train_df.csv")
     # val_df.to_csv(model_output_dir / "val_df.csv")
     logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("loaded data")
@@ -50,7 +54,7 @@ def main(config_path: str):
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
-    r = 2048
+    r = 8
     lora_alpha = r * 2
     peft_config = LoraConfig(
         inference_mode=False,
@@ -61,9 +65,6 @@ def main(config_path: str):
     # model = prepare_model_for_int8_training(model)
     model = get_peft_model(model, peft_config)
     logger.info(model.print_trainable_parameters())
-    model_name = load_from.split("/")[-1]
-    model_output_dir = WORK_DIRS_PATH / f"peft-{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-    model_output_dir.mkdir(exist_ok=True, parents=True)
     logger.info("initted models")
 
     logger.info("initting dataset")
@@ -72,17 +73,20 @@ def main(config_path: str):
     logger.info("initted dataset")
 
     logger.info("initting trainer")
+    warmup_epochs = 1
+    total_epochs = 200
+    warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
         greater_is_better=True,
-        warmup_ratio=0.8,
+        warmup_ratio=warmup_ratio,
         learning_rate=float(config["peft_lr"]),
         per_device_train_batch_size=1,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
         save_strategy="epoch",
         per_device_eval_batch_size=2,
-        num_train_epochs=200,
+        num_train_epochs=total_epochs,
         save_total_limit=2,
         report_to=config["report_to"],
         output_dir=str(model_output_dir),

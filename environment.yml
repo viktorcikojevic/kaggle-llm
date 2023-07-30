@@ -45,5 +45,5 @@ dependencies:
     - optimum
     - bitsandbytes
     - openai
-    - pydantic
+    - pydantic>=2.0.0
     - deepspeed

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+# https://www.kaggle.com/code/jjinho/open-book-llm-science-exam/input?scriptVersionId=137071419
 source source.bash
 rm -rf /home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df
 set -e

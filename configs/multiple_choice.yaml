@@ -8,9 +8,9 @@ raw_inputs:
 inputs:
 #  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
   - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/train.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/extra_train_set.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/6000_train_examples.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/extra_train_set.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/6000_train_examples.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions_2.csv"
 
 #load_from: "bigscience/mt0-large"
@@ -20,7 +20,7 @@ load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_xl"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
 
-#report_to: ["wandb"]
+report_to: ["wandb"]
 report_to: []
 lr: 5e-6
 peft_lr: 1e-5

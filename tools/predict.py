@@ -6,8 +6,6 @@ from kaggle_llm.core import (
     WORK_DIRS_PATH,
     infer_pred_from_scores,
 )
-from transformers.models.llama.configuration_llama import LlamaConfig
-from transformers.models.llama.modeling_llama import LlamaModel
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer
 from sklearn.preprocessing import normalize
 from datasets import Dataset

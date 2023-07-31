@@ -16,8 +16,8 @@ import json
 import yaml
 
 
-too_long_prompt_wc = 80
-context_cutoff_len = 70
+too_long_prompt_wc = 250
+context_cutoff_len = 150
 
 
 def split_text_into_chunks(text: str, chunk_size: int) -> List[str]:
@@ -52,10 +52,13 @@ def get_sentence_embeddings(
     batch_size = 16
     sentences_df = []
 
+    print("extracting sentences:")
     for _, row in tqdm(filtered_wiki_df.iterrows(), total=len(filtered_wiki_df)):
         _, sentence_offsets = bf.text_to_sentences_and_offsets(row["text"])
         for start_idx, end_idx in sentence_offsets:
-            if (end_idx - start_idx) > 3:
+            is_long_enough = (end_idx - start_idx) > 3
+            is_math = "\\" in row["text"][start_idx: end_idx]  # leads to excessive tokens
+            if is_long_enough and (not is_math):
                 sentences_df.append({
                     "page": row["page"],
                     "i_sentence": len(sentences_df),
@@ -70,6 +73,7 @@ def get_sentence_embeddings(
     print(f"keeping {len(pass_indices) / len(sentences_df) * 100} % at cutoff {context_cutoff_len}")
     sentences_df = sentences_df.loc[pass_indices, :].reset_index().copy()
 
+    print("computing wiki embeddings:")
     sentence_embeddings = model.encode(
         sentences_df["text"].values,
         batch_size=batch_size,
@@ -91,11 +95,17 @@ def main(
         wiki_df_path: Union[str, Path],
         out_dir: Union[str, Path],
         sentence_model: Union[str, Path] = "/home/clay/research/kaggle/kaggle_llm/data/sentence_transformer_model",
+        input_path: str = "",
         k: int = 3,
 ):
-    config_path = ROOT_PATH / "configs" / "multiple_choice.yaml"
-    with open(config_path, "rb") as f:
-        config = yaml.load(f, yaml.FullLoader)
+    if len(input_path) > 0:
+        print(f"input_path given as: {input_path}, using it")
+        input_paths = [input_path]
+    else:
+        config_path = ROOT_PATH / "configs" / "multiple_choice.yaml"
+        with open(config_path, "rb") as f:
+            config = yaml.load(f, yaml.FullLoader)
+        input_paths = config["raw_inputs"]
 
     model = SentenceTransformer(sentence_model, device="cuda")
     model.max_seq_length = 384
@@ -109,7 +119,7 @@ def main(
     batch_size = 16
     print(f"computed wiki embeddings")
 
-    for train_df_path in config["raw_inputs"]:
+    for train_df_path in input_paths:
         train_df_path = Path(train_df_path).resolve().absolute()
         print(f"computing contexts for: {train_df_path}")
 
@@ -151,7 +161,7 @@ def main(
 
         def join_prompt_with_context(_row):
             joined = _row["prompt"]
-            current_len = count_words(joined)
+            current_len = count_words(joined) + max(count_words(_row[c]) for c in ["A", "B", "C", "D", "E"])
             already_added_context = False
             _i_context = 0
             for _i in range(k):
@@ -177,8 +187,16 @@ def main(
         )
 
         out_path = (out_dir / train_df_path.name).resolve().absolute()
-        print(train_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
         train_df.to_csv(out_path)
+
+        choices = ["A", "B", "C", "D", "E"]
+        dbg_train_df = train_df.copy()
+        dbg_train_df["prompt_wc"] = dbg_train_df["prompt"].apply(count_words)
+        for c in choices:
+            dbg_train_df[f"{c}_wc"] = dbg_train_df[c].apply(count_words)
+        dbg_train_df["choice_wc"] = dbg_train_df[[f"{c}_wc" for c in choices]].max(axis=1)
+        dbg_train_df["all_wc"] = dbg_train_df["prompt_wc"] + dbg_train_df["choice_wc"]
+        print(dbg_train_df["all_wc"].describe(np.linspace(0, 1, 11)))
         print(f"saved: {out_path}")
 
 
@@ -187,11 +205,13 @@ if __name__ == "__main__":
     parser.add_argument("wiki_df_path")
     parser.add_argument("out_dir")
     parser.add_argument("sentence_model")
+    parser.add_argument("--input-path", type=str, required=False, default="")
     parser.add_argument("-k", type=int, default=3)
     args, _ = parser.parse_known_args()
     main(
         wiki_df_path=args.wiki_df_path,
         out_dir=args.out_dir,
         sentence_model=args.sentence_model,
-        k=args.k
+        input_path=args.input_path,
+        k=args.k,
     )

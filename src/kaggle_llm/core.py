@@ -33,6 +33,13 @@ def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict
     second_sentence = [example[option] for option in options]
     # Our tokenizer will turn our text into token IDs BERT can understand
     tokenized_example = tokenizer(first_sentence, second_sentence, truncation=True)
+
+    # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
+    # print(f"{_max_length = }")
+    # if _max_length > 900:
+    #     print(example)
+    #     assert False, ":D"
+
     if "answer" in example:
         tokenized_example["label"] = option_to_index[example["answer"]]
     return tokenized_example
@@ -43,6 +50,7 @@ class DataCollatorForMultipleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
+    # max_length: Optional[int] = 512  # sometimes the max_length is 980+ which breaks the gpu
     pad_to_multiple_of: Optional[int] = None
 
     def __call__(self, features):
@@ -55,6 +63,9 @@ class DataCollatorForMultipleChoice:
             ] for feature in features
         ]
         flattened_features = sum(flattened_features, [])
+
+        # _max_length = max([len(x["input_ids"]) for x in flattened_features])
+        # print(f"{_max_length = }")
 
         batch = self.tokenizer.pad(
             flattened_features,
@@ -138,10 +149,25 @@ def load_train_and_val_df(
 
     train_df = pd.concat(train_dfs, axis=0).reset_index()
     val_df = pd.concat(val_dfs, axis=0).reset_index()
+
     print("train:")
-    print(train_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
+    choices = ["A", "B", "C", "D", "E"]
+    dbg_train_df = train_df.copy()
+    dbg_train_df["prompt_wc"] = dbg_train_df["prompt"].apply(count_words)
+    for c in choices:
+        dbg_train_df[f"{c}_wc"] = dbg_train_df[c].apply(count_words)
+    dbg_train_df["choice_wc"] = dbg_train_df[[f"{c}_wc" for c in choices]].max(axis=1)
+    dbg_train_df["all_wc"] = dbg_train_df["prompt_wc"] + dbg_train_df["choice_wc"]
+    print(dbg_train_df["all_wc"].describe(np.linspace(0, 1, 11)))
     print("val:")
-    print(val_df["prompt"].apply(count_words).describe(np.linspace(0, 1, 11)))
+    dbg_val_df = val_df.copy()
+    dbg_val_df["prompt_wc"] = dbg_val_df["prompt"].apply(count_words)
+    for c in choices:
+        dbg_val_df[f"{c}_wc"] = dbg_val_df[c].apply(count_words)
+    dbg_val_df["choice_wc"] = dbg_val_df[[f"{c}_wc" for c in choices]].max(axis=1)
+    dbg_val_df["all_wc"] = dbg_val_df["prompt_wc"] + dbg_val_df["choice_wc"]
+    print(dbg_val_df["all_wc"].describe(np.linspace(0, 1, 11)))
+
     return train_df, val_df
 
 

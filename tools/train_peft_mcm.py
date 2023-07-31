@@ -93,7 +93,7 @@ def main(config_path: str):
         remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
         label_names=["labels"],  # for peft
         # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
-        # fp16=True,
+        fp16=True,
         # gradient_checkpointing=True,
         # gradient_accumulation_steps=4,
     )
@@ -111,9 +111,15 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    trainer.train()
-    trainer.model = trainer.model.merge_and_unload()
-    trainer.save_model(str(model_output_dir / "best_map3"))
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        print(f"training interrupted, moving on to save the model")
+    finally:
+        print(f"saving the model")
+        trainer.model = trainer.model.merge_and_unload()
+        trainer.save_model(str(model_output_dir / "best_map3"))
+        print(f"model saved")
 
 
 if __name__ == "__main__":

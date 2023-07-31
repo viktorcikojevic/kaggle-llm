@@ -62,17 +62,20 @@ def main(config_path: str):
     logger.info("initted dataset")
 
     logger.info("initting trainer")
+    warmup_epochs = 1
+    total_epochs = 200
+    warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
         greater_is_better=True,
-        warmup_ratio=0.8,
+        warmup_ratio=warmup_ratio,
         learning_rate=float(config["lr"]),
         per_device_train_batch_size=1,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
         save_strategy="epoch",
         per_device_eval_batch_size=2,
-        num_train_epochs=20,
+        num_train_epochs=total_epochs,
         save_total_limit=2,
         report_to=["wandb"],
         output_dir=str(model_output_dir),
@@ -95,8 +98,14 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    trainer.train()
-    trainer.save_model(str(model_output_dir / "best_map3"))
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        print(f"training interrupted, moving on to save the model")
+    finally:
+        print(f"saving the model")
+        trainer.save_model(str(model_output_dir / "best_map3"))
+        print(f"model saved")
 
 
 if __name__ == "__main__":

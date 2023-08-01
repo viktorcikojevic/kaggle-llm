@@ -63,7 +63,7 @@ def main(config_path: str):
 
     logger.info("initting trainer")
     warmup_epochs = 1
-    total_epochs = 200
+    total_epochs = 20
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
@@ -77,7 +77,7 @@ def main(config_path: str):
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,
         save_total_limit=2,
-        report_to=["wandb"],
+        report_to=config["report_to"],
         output_dir=str(model_output_dir),
         # fp16=True,
         # gradient_checkpointing=True,

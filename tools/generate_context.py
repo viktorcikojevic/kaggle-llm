@@ -84,7 +84,7 @@ def get_sentence_embeddings(
     ).half()
     sentence_embeddings = sentence_embeddings.detach().cpu().numpy()
 
-    sentence_index = faiss.IndexFlatL2(sentence_embeddings.shape[1])
+    sentence_index = faiss.IndexFlatIP(sentence_embeddings.shape[1])
     sentence_index.add(sentence_embeddings)
     print(f"{sentence_index.ntotal = }")
     return sentences_df, sentence_index

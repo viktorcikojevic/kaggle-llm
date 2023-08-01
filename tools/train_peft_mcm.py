@@ -8,7 +8,7 @@ from kaggle_llm.core import (
     get_tokenize_dataset_from_df,
 )
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
-from peft import get_peft_model, LoraConfig
+from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
 from loguru import logger
 from datetime import datetime
 import argparse
@@ -63,7 +63,9 @@ def main(config_path: str):
         lora_dropout=0.1,
     )
     # model = prepare_model_for_int8_training(model)
+    # model.enable_input_require_grads()
     model = get_peft_model(model, peft_config)
+    # model = prepare_model_for_int8_training(model)
     logger.info(model.print_trainable_parameters())
     logger.info("initted models")
 
@@ -74,7 +76,7 @@ def main(config_path: str):
 
     logger.info("initting trainer")
     warmup_epochs = 1
-    total_epochs = 200
+    total_epochs = 20
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
@@ -117,6 +119,7 @@ def main(config_path: str):
         print(f"training interrupted, moving on to save the model")
     finally:
         print(f"saving the model")
+        trainer.save_model(str(model_output_dir / "best_map3_peft"))
         trainer.model = trainer.model.merge_and_unload()
         trainer.save_model(str(model_output_dir / "best_map3"))
         print(f"model saved")

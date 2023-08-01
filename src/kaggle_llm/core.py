@@ -36,7 +36,7 @@ def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict
 
     # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
     # print(f"{_max_length = }")
-    # if _max_length > 900:
+    # if _max_length > 350:
     #     print(example)
     #     assert False, ":D"
 

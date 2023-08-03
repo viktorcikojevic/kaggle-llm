@@ -8,7 +8,7 @@ from kaggle_llm.core import (
     get_tokenize_dataset_from_df,
 )
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
-from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training
+from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training, AdaLoraConfig
 from loguru import logger
 from datetime import datetime
 import argparse
@@ -54,8 +54,22 @@ def main(config_path: str):
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
     model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    # https://github.com/huggingface/peft/blob/main/examples/int8_training/peft_adalora_whisper_large_training.py
     r = 8
     lora_alpha = r * 2
+    # peft_config = AdaLoraConfig(
+    #     init_r=12,
+    #     target_r=4,
+    #     beta1=0.85,
+    #     beta2=0.85,
+    #     tinit=200,
+    #     tfinal=1000,
+    #     deltaT=10,
+    #     lora_alpha=lora_alpha,
+    #     lora_dropout=0.1,
+    #     # target_modules=["k_proj", "q_proj", "v_proj", "out_proj", "fc1", "fc2"],
+    #     orth_reg_weight=0.5,
+    # )
     peft_config = LoraConfig(
         inference_mode=False,
         r=r,

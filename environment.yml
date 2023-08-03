@@ -17,7 +17,6 @@ dependencies:
   - tqdm
   - ipython
   - jupyter
-  - scikit-learn
   - matplotlib
   - scipy
   - tensorboard
@@ -48,3 +47,6 @@ dependencies:
     - pydantic>=2.0.0
     - sentence-transformers
     - blingfire
+    - bokeh
+    - umap-learn
+    - scikit-learn

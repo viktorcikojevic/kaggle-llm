@@ -125,6 +125,16 @@ def compute_metrics(preds: EvalPrediction) -> Dict:
     return {"map3": map3}
 
 
+def drop_df_cols_for_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    if "Unnamed: 0" in df:
+        df = df.drop("Unnamed: 0", axis=1)
+    if "id" in df:
+        df = df.drop("id", axis=1)
+    if "index" in df:
+        df = df.drop("index", axis=1)
+    return df
+
+
 def load_train_and_val_df(
         input_paths: List[Union[str, Path]],
         i_fold: int,
@@ -135,12 +145,7 @@ def load_train_and_val_df(
     val_dfs = []
     for ip in input_paths:
         df = pd.read_csv(ip)
-        if "Unnamed: 0" in df:
-            df = df.drop("Unnamed: 0", axis=1)
-        if "id" in df:
-            df = df.drop("id", axis=1)
-        if "index" in df:
-            df = df.drop("index", axis=1)
+        df = drop_df_cols_for_dataset(df)
         train_idx, val_idx = list(kf.split(df))[i_fold]
         train_df = df.loc[train_idx, :]
         val_df = df.loc[val_idx, :]

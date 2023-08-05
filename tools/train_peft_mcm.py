@@ -46,7 +46,6 @@ def print_trainable_parameters(model):
 def count_conversion_ratio(model, print_convert_names: bool = True):
     f16_count = 0
     all_count = 0
-    print(f"layer[123] = {list(model.named_parameters())[123][0]}")
     for n, p in model.named_parameters():
         all_count += 1
         if p.dtype == torch.float16:
@@ -165,9 +164,10 @@ def main(config_path: str):
         print(f"training interrupted, moving on to save the model")
     finally:
         print(f"saving the model")
-        trainer.save_model(str(model_output_dir / "best_map3_peft"))
-        # trainer.model = trainer.model.merge_and_unload()
-        # trainer.save_model(str(model_output_dir / "best_map3"))
+        checkpoint_output_dir = str(model_output_dir / "best_map3_peft")
+        trainer.save_model(checkpoint_output_dir)
+        if hasattr(model.base_model, "save_extra_modules"):
+            model.base_model.save_extra_modules(checkpoint_output_dir)
         print(f"model saved")
 
 

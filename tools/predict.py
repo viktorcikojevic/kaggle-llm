@@ -1,3 +1,5 @@
+import torch
+
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     ROOT_PATH,
@@ -5,8 +7,11 @@ from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
     WORK_DIRS_PATH,
     infer_pred_from_scores,
+    get_tokenize_dataset_from_df,
+    drop_df_cols_for_dataset,
 )
-from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer
+from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer, TrainingArguments
+from peft import PeftModel, PeftConfig
 from sklearn.preprocessing import normalize
 from datasets import Dataset
 from pathlib import Path
@@ -30,28 +35,43 @@ def main(
 
     print(json.dumps(submission_config, indent=4))
     models = submission_config["models"]
-
-    print("initting dataset")
     df = pd.read_csv(input_df_path)
-    dataset = Dataset.from_pandas(df)
-    print("initted dataset")
+    df = drop_df_cols_for_dataset(df)
 
     for i, load_from in enumerate(models):
         print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
+        is_peft = "peft" in abs_load_from.parent.name
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
-        model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
+        if is_peft:
+            config = json.loads(Path(abs_load_from / "adapter_config.json").read_text())
+            base_model_path = config["base_model_name_or_path"]
+            # TODO(Sumo): do some path mangling here
+            model = AutoModelForMultipleChoice.from_pretrained(base_model_path, load_in_8bit=True, device_map="auto")
+            model = PeftModel.from_pretrained(model, abs_load_from)
+            if hasattr(model.base_model, "load_extra_modules"):
+                model.base_model.load_extra_modules(abs_load_from)
+            kwargs = dict(
+                remove_unused_columns=False,
+                label_names=["labels"],
+            )
+        else:
+            model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
+            kwargs = {}
         # model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")
-        tokenized_dataset = dataset.map(
-            lambda example: multiple_choice_preprocess(tokenizer, example),
-            remove_columns=["prompt", "A", "B", "C", "D", "E"] + (["answer"] if "answer" in df.columns else [])
+        tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
+        training_args = TrainingArguments(
+            per_device_eval_batch_size=1,
+            output_dir="/tmp/kaggle_llm_pred",
+            **kwargs,
+            fp16=True,
         )
         trainer = Trainer(
-            model=model,
-            args=None,
+            model=model.eval(),
+            args=training_args,
             tokenizer=tokenizer,
             data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
             train_dataset=None,
@@ -59,7 +79,8 @@ def main(
         print(f"initted tokenizer and trainer [{i}]")
 
         print(f"predicting [{i}]")
-        preds = trainer.predict(tokenized_dataset)
+        with torch.no_grad():
+            preds = trainer.predict(tokenized_dataset)
         print(f"predicted [{i}]")
 
         model_output_path = output_dir / (load_from.replace("/", "-") + ".csv")

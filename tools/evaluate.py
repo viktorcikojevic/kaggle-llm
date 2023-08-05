@@ -4,8 +4,11 @@ import pandas as pd
 import argparse
 
 
-def main(pred_path: str):
-    label_df = pd.read_csv("/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam-splitted/test.csv")
+def main(
+        pred_path: str,
+        label_path: str,
+):
+    label_df = pd.read_csv(label_path)
     pred_path = Path(pred_path)
     if pred_path.is_dir():
         pred_paths = sorted(list(pred_path.glob("*.csv")))
@@ -21,5 +24,6 @@ def main(pred_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("pred")
+    parser.add_argument("--label-path", type=str, required=False, default="/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam-splitted/test.csv")
     args, _ = parser.parse_known_args()
-    main(args.pred)
+    main(args.pred, args.label_path)

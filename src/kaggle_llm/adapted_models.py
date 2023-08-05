@@ -4,6 +4,7 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.llama.modeling_llama import LlamaPreTrainedModel, LlamaModel
 from transformers.modeling_outputs import MultipleChoiceModelOutput
 from transformers import AutoModelForMultipleChoice
+from pathlib import Path
 from typing import *
 import torch.nn as nn
 import torch
@@ -132,6 +133,14 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
         self.init_weights()
+
+    def save_extra_modules(self, checkpoint_dir: Union[str, Path]):
+        checkpoint_dir = Path(checkpoint_dir)
+        torch.save(self.classifier.state_dict(), checkpoint_dir / "classifier.pt")
+
+    def load_extra_modules(self, checkpoint_dir: Union[str, Path]):
+        checkpoint_dir = Path(checkpoint_dir)
+        self.classifier.load_state_dict(torch.load(checkpoint_dir / "classifier.pt"))
 
     def get_input_embeddings(self):
         return self.model.embed_tokens

@@ -1,4 +1,5 @@
 models:
-  - "deberta-v3-large-notebook-weights-2023-07-30-23-29-12/best_map3"
+#  - "deberta-v3-large-notebook-weights-2023-07-30-23-29-12/best_map3"
+  - "peft-meta_llama2_7b-2023-08-05-23-26-20/best_map3_peft"
 #  - "mt0-small-2023-07-29-15-23-13/best_map3"
 #  - "deberta-v3-large-notebook-weights-2023-07-28-22-47-37/best_map3"

@@ -81,7 +81,7 @@ def main(config_path: str):
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
-    model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)#, device_map="auto")
+    model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True, device_map="auto")
     count_conversion_ratio(model, True)
     model = prepare_model_for_kbit_training(model)
     # https://github.com/huggingface/peft/blob/main/examples/int8_training/peft_adalora_whisper_large_training.py
@@ -159,11 +159,6 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    with torch.autocast("cuda"):
-        trainer.train()
-    # print(f"saving the model")
-    # trainer.save_model(str(model_output_dir / "best_map3_peft"))
-    # print(f"model saved")
     try:
         trainer.train()
     except KeyboardInterrupt:
@@ -171,8 +166,8 @@ def main(config_path: str):
     finally:
         print(f"saving the model")
         trainer.save_model(str(model_output_dir / "best_map3_peft"))
-        trainer.model = trainer.model.merge_and_unload()
-        trainer.save_model(str(model_output_dir / "best_map3"))
+        # trainer.model = trainer.model.merge_and_unload()
+        # trainer.save_model(str(model_output_dir / "best_map3"))
         print(f"model saved")
 
 

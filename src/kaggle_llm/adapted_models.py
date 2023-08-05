@@ -114,8 +114,8 @@ AutoModelForMultipleChoice.register(MT5Config, MT5ModelForMultipleChoice)
 
 class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
     _keep_in_fp32_modules = [
-        "pooler",
-        "dropout",
+        # "pooler",
+        # "dropout",
         "classifier"
     ]
 
@@ -126,9 +126,9 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         config.pooler_hidden_size = getattr(config, "pooler_hidden_size", config.hidden_size)
         config.pooler_dropout = 0
         config.pooler_hidden_act = "gelu"
-        self.pooler = ContextPooler(config)
-        output_dim = self.pooler.output_dim
-        self.classifier = nn.Linear(output_dim, 1)
+        # self.pooler = ContextPooler(config)
+        # output_dim = self.pooler.output_dim
+        self.classifier = nn.Linear(4096, 1)
         drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
         self.init_weights()
@@ -181,7 +181,8 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         )
 
         encoder_layer = outputs[0]
-        pooled_output = self.pooler(encoder_layer)
+        # pooled_output = self.pooler(encoder_layer)
+        pooled_output = encoder_layer.mean(1)
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         reshaped_logits = logits.view(-1, num_choices)

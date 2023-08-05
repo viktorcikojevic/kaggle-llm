@@ -113,6 +113,12 @@ AutoModelForMultipleChoice.register(MT5Config, MT5ModelForMultipleChoice)
 
 
 class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
+    _keep_in_fp32_modules = [
+        "pooler",
+        "dropout",
+        "classifier"
+    ]
+
     def __init__(self, config: LlamaConfig):
         LlamaPreTrainedModel.__init__(self, config)
         self.model = LlamaModel(config)
@@ -120,21 +126,18 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         config.pooler_hidden_size = getattr(config, "pooler_hidden_size", config.hidden_size)
         config.pooler_dropout = 0
         config.pooler_hidden_act = "gelu"
-        num_labels = getattr(config, "num_labels", 2)
-        self.num_labels = num_labels
         self.pooler = ContextPooler(config)
         output_dim = self.pooler.output_dim
         self.classifier = nn.Linear(output_dim, 1)
         drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
-        self.model_parallel = False
         self.init_weights()
 
     def get_input_embeddings(self):
-        return self.model.get_input_embeddings()
+        return self.model.embed_tokens
 
-    def set_input_embeddings(self, new_embeddings):
-        self.model.set_input_embeddings(new_embeddings)
+    def set_input_embeddings(self, value):
+        self.model.embed_tokens = value
 
     def forward(
         self,
@@ -191,6 +194,8 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             output = (reshaped_logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
 
+        assert not torch.isnan(reshaped_logits).any(), f"found nan"
+        assert not torch.isnan(loss).any(), f"loss nan"
         return MultipleChoiceModelOutput(
             loss=loss,
             logits=reshaped_logits,

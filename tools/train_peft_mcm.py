@@ -7,25 +7,54 @@ from kaggle_llm.core import (
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
 )
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
-from peft import get_peft_model, LoraConfig, prepare_model_for_int8_training, AdaLoraConfig
+from transformers import (
+    AutoModelForMultipleChoice,
+    TrainingArguments,
+    Trainer,
+    AutoTokenizer,
+    EarlyStoppingCallback,
+)
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training, AdaLoraConfig
 from loguru import logger
 from datetime import datetime
 import argparse
 import json
 import yaml
 import sys
-import os
-
-
-os.environ["MASTER_ADDR"] = "localhost"
-os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
-os.environ["RANK"] = "0"
-os.environ["LOCAL_RANK"] = "0"
-os.environ["WORLD_SIZE"] = "1"
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
+
+
+def print_trainable_parameters(model):
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        num_params = param.numel()
+        # if using DS Zero 3 and the weights are initialized empty
+        if num_params == 0 and hasattr(param, "ds_numel"):
+            num_params = param.ds_numel
+
+        all_param += num_params
+        if param.requires_grad:
+            trainable_params += num_params
+    print(
+        f"trainable params: {trainable_params:,d} || all params: {all_param:,d} || trainable%: {100 * trainable_params / all_param}"
+    )
+
+
+def count_conversion_ratio(model, print_convert_names: bool = True):
+    f16_count = 0
+    all_count = 0
+    print(f"layer[123] = {list(model.named_parameters())[123][0]}")
+    for n, p in model.named_parameters():
+        all_count += 1
+        if p.dtype == torch.float16:
+            if print_convert_names:
+                print(n)
+            f16_count += 1
+    conversion_ratio = f16_count / all_count
+    print(f"{conversion_ratio = }")
 
 
 def main(config_path: str):
@@ -45,15 +74,16 @@ def main(config_path: str):
     model_name = load_from.split("/")[-1]
     model_output_dir = WORK_DIRS_PATH / f"peft-{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     model_output_dir.mkdir(exist_ok=True, parents=True)
-    train_df.to_csv(model_output_dir / "train_df.csv")
+    # train_df.to_csv(model_output_dir / "train_df.csv")
     # val_df.to_csv(model_output_dir / "val_df.csv")
     logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("loaded data")
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
-    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
-    model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)#, device_map="auto")
+    count_conversion_ratio(model, True)
+    model = prepare_model_for_kbit_training(model)
     # https://github.com/huggingface/peft/blob/main/examples/int8_training/peft_adalora_whisper_large_training.py
     r = 8
     lora_alpha = r * 2
@@ -73,14 +103,14 @@ def main(config_path: str):
     peft_config = LoraConfig(
         inference_mode=False,
         r=r,
+        # target_modules=["q_proj", "v_proj", "classifier", "pooler", "dropout"],
+        # target_modules=["q_proj", "v_proj", "classifier"],
+        # target_modules=["q_proj", "v_proj"],
         lora_alpha=lora_alpha,
         lora_dropout=0.1,
     )
-    # model = prepare_model_for_int8_training(model)
-    # model.enable_input_require_grads()
     model = get_peft_model(model, peft_config)
-    # model = prepare_model_for_int8_training(model)
-    logger.info(model.print_trainable_parameters())
+    logger.info(print_trainable_parameters(model))
     logger.info("initted models")
 
     logger.info("initting dataset")
@@ -110,6 +140,8 @@ def main(config_path: str):
         label_names=["labels"],  # for peft
         # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
         fp16=True,
+        ddp_find_unused_parameters=False,
+        # optim=transformers.training_args.OptimizerNames.ADAMW_BNB,
         # gradient_checkpointing=True,
         # gradient_accumulation_steps=4,
     )
@@ -127,6 +159,11 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
+    with torch.autocast("cuda"):
+        trainer.train()
+    # print(f"saving the model")
+    # trainer.save_model(str(model_output_dir / "best_map3_peft"))
+    # print(f"model saved")
     try:
         trainer.train()
     except KeyboardInterrupt:

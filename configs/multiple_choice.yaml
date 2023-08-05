@@ -14,7 +14,8 @@ inputs:
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_large"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_xl"
-load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
+#load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
+load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/meta_llama2_7b"
 
 #report_to: ["wandb"]
 report_to: []

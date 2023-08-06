@@ -6,8 +6,9 @@ raw_inputs:
   - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions_2.csv"
 
 inputs:
-#  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
-  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/train.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/train.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions_2.csv"
 

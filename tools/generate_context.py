@@ -161,7 +161,7 @@ def main(
 
         def join_prompt_with_context(_row):
             joined = _row["prompt"]
-            current_len = count_words(joined) + max(count_words(_row[c]) for c in ["A", "B", "C", "D", "E"])
+            current_len = count_words(joined) + max(count_words(_row[_c]) for _c in ["A", "B", "C", "D", "E"])
             already_added_context = False
             _i_context = 0
             for _i in range(k):

@@ -1,9 +1,6 @@
-import torch
-
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     ROOT_PATH,
-    multiple_choice_preprocess,
     DataCollatorForMultipleChoice,
     WORK_DIRS_PATH,
     infer_pred_from_scores,
@@ -11,9 +8,8 @@ from kaggle_llm.core import (
     drop_df_cols_for_dataset,
 )
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer, TrainingArguments
-from peft import PeftModel, PeftConfig
+from peft import PeftModel
 from sklearn.preprocessing import normalize
-from datasets import Dataset
 from pathlib import Path
 import pandas as pd
 import argparse
@@ -24,6 +20,7 @@ import json
 def main(
         input_df_path: str,
         output_dir: str,
+        base_models_dir: str = "",
 ):
     input_df_path = Path(input_df_path)
     assert input_df_path.is_file(), f"{input_df_path} not found"
@@ -45,8 +42,11 @@ def main(
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
         if is_peft:
             config = json.loads(Path(abs_load_from / "adapter_config.json").read_text())
-            base_model_path = config["base_model_name_or_path"]
-            # TODO(Sumo): do some path mangling here
+            base_model_path = Path(config["base_model_name_or_path"])
+            print(f"{base_models_dir = }")
+            if base_models_dir != "":
+                base_model_path = Path(base_models_dir) / base_model_path.name
+                print(f"base_model_dir given, overriding peft base_model_path to: {base_model_path}")
             model = AutoModelForMultipleChoice.from_pretrained(base_model_path, load_in_8bit=True, device_map="auto")
             model = PeftModel.from_pretrained(model, abs_load_from)
             if hasattr(model.base_model, "load_extra_modules"):
@@ -58,7 +58,6 @@ def main(
         else:
             model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
             kwargs = {}
-        # model = AutoModelForMultipleChoice.from_pretrained(abs_load_from)
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")
@@ -97,5 +96,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("df_path")
     parser.add_argument("--output-dir", default=f"{str(ROOT_PATH)}/preds")
+    parser.add_argument("--base-models-dir", default="")
     args, _ = parser.parse_known_args()
-    main(args.df_path, args.output_dir)
+    main(args.df_path, args.output_dir, args.base_models_dir)

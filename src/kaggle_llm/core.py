@@ -95,18 +95,22 @@ def infer_pred_from_scores(pred_df: pd.DataFrame):
     return pred_df
 
 
-def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):
+def get_map3_df(label_df: pd.DataFrame, pred_df: pd.DataFrame) -> pd.DataFrame:
     pred_df = pred_df["prediction"].str.split(" ", expand=True).rename({0: "pred0", 1: "pred1", 2: "pred2"}, axis=1)
-    joined_df = label_df.join(pred_df, how="left")
+    joined_df = label_df.join(pred_df, how="inner")
     assert not joined_df["pred0"].isna().any(), f"{joined_df['pred0'].isna().sum() = }"
     assert not joined_df["pred1"].isna().any(), f"{joined_df['pred1'].isna().sum() = }"
     assert not joined_df["pred2"].isna().any(), f"{joined_df['pred2'].isna().sum() = }"
 
-    map3 = 0
     ranks_to_scores = [1.0, 1 / 2, 1 / 3]
+    joined_df["scores"] = 0.0
     for k in range(3):
-        map3 += ranks_to_scores[k] * (joined_df[f"pred{k}"] == joined_df[f"answer"]).sum() / len(joined_df)
-    return map3
+        joined_df["scores"] = joined_df["scores"] + ranks_to_scores[k] * (joined_df[f"pred{k}"] == joined_df[f"answer"])
+    return joined_df
+
+
+def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):
+    return get_map3_df(label_df, pred_df)["scores"].mean()
 
 
 def compute_metrics(preds: EvalPrediction) -> Dict:
@@ -178,11 +182,13 @@ def load_train_and_val_df(
 
 def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
     dataset = Dataset.from_pandas(df)
+    topic_cols = [c for c in df.columns if "topic" in c]
     return dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
         remove_columns=(
-            ["prompt", "A", "B", "C", "D", "E", "answer"]
-            + (["topic"] if "topic" in df else [])
+            ["prompt", "A", "B", "C", "D", "E"]
+            + (["answer"] if "answer" in df else [])
+            + topic_cols
             + (["index"] if "index" in df else [])
         )
     )

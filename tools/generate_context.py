@@ -15,7 +15,6 @@ import faiss
 import json
 import yaml
 
-
 too_long_prompt_wc = 250
 context_cutoff_len = 150
 
@@ -41,9 +40,9 @@ def get_sentence_embeddings(
 
     wc_per_page = wiki_df.groupby("page")[["word_count"]].sum().sort_values("word_count", ascending=False)
     black_list = list(wc_per_page.loc[
-        (wc_per_page["word_count"] > 10000)
-        | (wc_per_page.index.map(lambda x: "list of equations" in x.lower()))
-    ].index)
+                          (wc_per_page["word_count"] > 10000)
+                          | (wc_per_page.index.map(lambda x: "list of equations" in x.lower()))
+                          ].index)
     print(json.dumps(black_list, indent=4))
 
     filtered_wiki_df = wiki_df.loc[~wiki_df["page"].isin(black_list), :].copy()
@@ -63,6 +62,13 @@ def get_sentence_embeddings(
                     "page": row["page"],
                     "i_sentence": len(sentences_df),
                     "text": row["text"][start_idx: end_idx],
+                    "topic": row["page"].lower()
+                    .replace(" ", "_")
+                    .replace("/", "_")
+                    .replace("'", "_")
+                    .replace("(", "_")
+                    .replace(")", "_")
+                    .replace(":", "_"),
                 })
 
     sentences_df = pd.DataFrame.from_records(sentences_df)
@@ -97,6 +103,7 @@ def main(
         sentence_model: Union[str, Path] = "/home/clay/research/kaggle/kaggle_llm/data/sentence_transformer_model",
         input_path: str = "",
         k: int = 3,
+        dont_add_context: bool = False,
 ):
     if len(input_path) > 0:
         print(f"input_path given as: {input_path}, using it")
@@ -156,12 +163,17 @@ def main(
                 on=f"context_{i}_idx",
                 how="left",
             )["text"]
+            train_df[f"context_topic_{i}"] = train_df.join(
+                sentences_df["topic"].rename(f"topic_context_{i}"),
+                on=f"context_{i}_idx",
+                how="left",
+            )[f"topic_context_{i}"]
 
         assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts"
 
         def join_prompt_with_context(_row):
             joined = _row["prompt"]
-            current_len = count_words(joined) + max(count_words(_row[c]) for c in ["A", "B", "C", "D", "E"])
+            current_len = count_words(joined) + max(count_words(_row[_c]) for _c in ["A", "B", "C", "D", "E"])
             already_added_context = False
             _i_context = 0
             for _i in range(k):
@@ -175,13 +187,16 @@ def main(
                 _i_context += 1
             return joined
 
-        train_df["prompt"] = train_df.apply(join_prompt_with_context, axis=1)
-        assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts after proc"
+        if dont_add_context:
+            print(f"context adding skipped due to {dont_add_context = }")
+        else:
+            train_df["prompt"] = train_df.apply(join_prompt_with_context, axis=1)
+            assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts after proc"
         train_df = train_df.drop(
             (
-                ["prompt_and_answer"]
-                + [f"context_{i}" for i in range(k)]
-                + [f"context_{i}_idx" for i in range(k)]
+                    ["prompt_and_answer"]
+                    + [f"context_{i}" for i in range(k)]
+                    + [f"context_{i}_idx" for i in range(k)]
             ),
             axis=1,
         )
@@ -206,6 +221,7 @@ if __name__ == "__main__":
     parser.add_argument("out_dir")
     parser.add_argument("sentence_model")
     parser.add_argument("--input-path", type=str, required=False, default="")
+    parser.add_argument("--dont-add-context", action="store_true")
     parser.add_argument("-k", type=int, default=3)
     args, _ = parser.parse_known_args()
     main(
@@ -214,4 +230,5 @@ if __name__ == "__main__":
         sentence_model=args.sentence_model,
         input_path=args.input_path,
         k=args.k,
+        dont_add_context=args.dont_add_context,  # for when we don't train a context model but want to infer the topics
     )

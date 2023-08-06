@@ -191,7 +191,18 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
 
         encoder_layer = outputs[0]
         # pooled_output = self.pooler(encoder_layer)
-        pooled_output = encoder_layer.mean(1)
+        # pooled_output = encoder_layer[:, 0]
+
+        if input_ids is not None:
+            sequence_lengths = (torch.ne(flat_input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
+        else:
+            sequence_lengths = -1
+        pooled_output = encoder_layer[
+            torch.arange(encoder_layer.shape[0], device=encoder_layer.device),
+            sequence_lengths,
+            :
+        ]
+
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
         reshaped_logits = logits.view(-1, num_choices)
@@ -205,7 +216,8 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             return ((loss,) + output) if loss is not None else output
 
         assert not torch.isnan(reshaped_logits).any(), f"found nan"
-        assert not torch.isnan(loss).any(), f"loss nan"
+        if loss is not None:
+            assert not torch.isnan(loss).any(), f"loss nan"
         return MultipleChoiceModelOutput(
             loss=loss,
             logits=reshaped_logits,

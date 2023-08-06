@@ -126,7 +126,7 @@ def main(config_path: str):
         greater_is_better=True,
         warmup_ratio=warmup_ratio,
         learning_rate=float(config["peft_lr"]),
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
         save_strategy="epoch",

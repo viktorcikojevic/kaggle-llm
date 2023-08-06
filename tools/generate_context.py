@@ -164,10 +164,9 @@ def main(
                 how="left",
             )["text"]
             train_df[f"context_topic_{i}"] = train_df.join(
-                sentences_df["topic"],
+                sentences_df["topic"].rename(f"topic_context_{i}"),
                 on=f"context_{i}_idx",
                 how="left",
-                rsuffix=f"_context_{i}"
             )[f"topic_context_{i}"]
 
         assert not train_df["prompt"].isna().any(), f"{train_df_path} contains {train_df['prompt'].isna().sum()} dumbass prompts"

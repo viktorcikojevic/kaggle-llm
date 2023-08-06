@@ -216,7 +216,8 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             return ((loss,) + output) if loss is not None else output
 
         assert not torch.isnan(reshaped_logits).any(), f"found nan"
-        assert not torch.isnan(loss).any(), f"loss nan"
+        if loss is not None:
+            assert not torch.isnan(loss).any(), f"loss nan"
         return MultipleChoiceModelOutput(
             loss=loss,
             logits=reshaped_logits,

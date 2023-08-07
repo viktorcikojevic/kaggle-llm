@@ -1,6 +1,6 @@
 from typing import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction, PreTrainedModel
+from transformers import EvalPrediction, PreTrainedModel, Trainer
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
@@ -228,3 +228,21 @@ class WrappedPeftModel(PeftModel):
             out_model.base_model.load_extra_modules(model_id)
             print(f"loaded extra modules for class {out_model.base_model.__class__.__name__}")
         return out_model
+
+
+def train_and_save_best_model_on_error(
+        trainer: Trainer,
+        model_output_dir: Path,
+        best_model_dir_name: str = "best_map3"
+):
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        print(f"training interrupted, moving on to save the model")
+    finally:
+        if trainer.state.best_model_checkpoint is not None:
+            print(f"trainer has some best models stored: {trainer.state.best_model_checkpoint}, setting it as the best checkpoint")
+            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir / best_model_dir_name))
+        else:
+            print(f"trainer has NO best models stored, returning")
+            return

@@ -6,6 +6,7 @@ from kaggle_llm.core import (
     compute_metrics,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
+    train_and_save_best_model_on_error,
 )
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
 from loguru import logger
@@ -98,14 +99,7 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    try:
-        trainer.train()
-    except KeyboardInterrupt:
-        print(f"training interrupted, moving on to save the model")
-    finally:
-        print(f"saving the model")
-        trainer.save_model(str(model_output_dir / "best_map3"))
-        print(f"model saved")
+    train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3")
 
 
 if __name__ == "__main__":

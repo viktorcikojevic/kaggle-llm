@@ -1,14 +1,16 @@
 from typing import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction
+from transformers import EvalPrediction, PreTrainedModel
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
 from datasets import Dataset
 from pathlib import Path
+from peft import PeftModel, PeftConfig
 import pandas as pd
 import numpy as np
 import torch
+import os
 
 
 ROOT_PATH = Path(__file__).resolve().absolute().parent.parent.parent
@@ -192,3 +194,37 @@ def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenize
             + (["index"] if "index" in df else [])
         )
     )
+
+
+class WrappedPeftModel(PeftModel):
+    """ peft model with some custom layers that's not handled by peft, e.g. classifier layers """
+    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "default"):
+        PeftModel.__init__(self, model, peft_config, adapter_name)
+
+    def save_pretrained(
+        self,
+        save_directory: str,
+        safe_serialization: bool = False,
+        selected_adapters: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
+        PeftModel.save_pretrained(self, save_directory, safe_serialization, selected_adapters, **kwargs)
+        if hasattr(self.base_model, "save_extra_modules"):
+            self.base_model.save_extra_modules(save_directory)
+            print(f"saved extra modules for class {self.base_model.__class__.__name__}")
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        model: PreTrainedModel,
+        model_id: Union[str, os.PathLike],
+        adapter_name: str = "default",
+        is_trainable: bool = False,
+        config: Optional[PeftConfig] = None,
+        **kwargs: Any,
+    ):
+        out_model = PeftModel.from_pretrained(model, model_id, adapter_name, is_trainable, config, **kwargs)
+        if hasattr(out_model.base_model, "load_extra_modules"):
+            out_model.base_model.load_extra_modules(model_id)
+            print(f"loaded extra modules for class {out_model.base_model.__class__.__name__}")
+        return out_model

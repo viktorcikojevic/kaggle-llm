@@ -6,6 +6,7 @@ from kaggle_llm.core import (
     compute_metrics,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
+    WrappedPeftModel,
 )
 from transformers import (
     AutoModelForMultipleChoice,
@@ -14,7 +15,7 @@ from transformers import (
     AutoTokenizer,
     EarlyStoppingCallback,
 )
-from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training, AdaLoraConfig
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training, AdaLoraConfig, PeftModel
 from loguru import logger
 from datetime import datetime
 import argparse
@@ -108,7 +109,8 @@ def main(config_path: str):
         lora_alpha=lora_alpha,
         lora_dropout=0.1,
     )
-    model = get_peft_model(model, peft_config)
+    model = WrappedPeftModel(model, peft_config)
+    # model = get_peft_model(model, peft_config)
     logger.info(print_trainable_parameters(model))
     logger.info("initted models")
 
@@ -126,7 +128,7 @@ def main(config_path: str):
         greater_is_better=True,
         warmup_ratio=warmup_ratio,
         learning_rate=float(config["peft_lr"]),
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=1,
         load_best_model_at_end=True,
         evaluation_strategy="epoch",
         save_strategy="epoch",
@@ -166,8 +168,6 @@ def main(config_path: str):
         print(f"saving the model")
         checkpoint_output_dir = str(model_output_dir / "best_map3_peft")
         trainer.save_model(checkpoint_output_dir)
-        if hasattr(model.base_model, "save_extra_modules"):
-            model.base_model.save_extra_modules(checkpoint_output_dir)
         print(f"model saved")
 
 

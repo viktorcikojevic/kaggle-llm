@@ -6,6 +6,7 @@ from kaggle_llm.core import (
     infer_pred_from_scores,
     get_tokenize_dataset_from_df,
     drop_df_cols_for_dataset,
+    WrappedPeftModel,
 )
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer, TrainingArguments
 from peft import PeftModel
@@ -48,7 +49,7 @@ def main(
                 base_model_path = Path(base_models_dir) / base_model_path.name
                 print(f"base_model_dir given, overriding peft base_model_path to: {base_model_path}")
             model = AutoModelForMultipleChoice.from_pretrained(base_model_path, load_in_8bit=True, device_map="auto")
-            model = PeftModel.from_pretrained(model, abs_load_from)
+            model = WrappedPeftModel.from_pretrained(model, abs_load_from)
             if hasattr(model.base_model, "load_extra_modules"):
                 model.base_model.load_extra_modules(abs_load_from)
             kwargs = dict(

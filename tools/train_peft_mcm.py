@@ -16,7 +16,8 @@ from transformers import (
     AutoTokenizer,
     EarlyStoppingCallback,
 )
-from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training, AdaLoraConfig, PeftModel
+from peft import get_peft_model, LoraConfig, prepare_model_for_kbit_training, AdaLoraConfig, PeftModel, IA3Config
+import peft
 from loguru import logger
 from datetime import datetime
 import argparse
@@ -104,7 +105,9 @@ def main(config_path: str):
     #     orth_reg_weight=0.5,
     # )
     logger.info(json.dumps(config["peft_kwargs"]))
-    peft_config = LoraConfig(
+    config_class = getattr(peft, config["peft_class"])
+    logger.info(f"{config_class = }")
+    peft_config = config_class(
         inference_mode=False,
         **config["peft_kwargs"],
     )
@@ -158,9 +161,9 @@ def main(config_path: str):
         ],
     )
     logger.info("initting trainer")
-    # trainer.train()
 
-    train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3_peft")
+    trainer.train()
+    # train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3_peft")
 
 
 if __name__ == "__main__":

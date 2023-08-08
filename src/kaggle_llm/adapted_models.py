@@ -337,4 +337,11 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
             attentions=outputs.attentions,
         )
 
-# AutoModelForMultipleChoice.register(DebertaV2Config, DebertaV2ForMultipleChoice2, exist_ok=True)
+
+try:
+    # note: this add requires exist_ok=True to override the existing deberta config. Kernel is older and
+    # doesn't support this, but we don't really care since we submit llama2 only. This model is more for
+    # experimentation
+    AutoModelForMultipleChoice.register(DebertaV2Config, DebertaV2ForMultipleChoice2, exist_ok=True)
+except Exception as e:
+    print(f"issues with registering DebertaV2ForMultipleChoice2: {e}")

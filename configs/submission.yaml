@@ -1,2 +1,3 @@
 models:
-  - "peft-meta_llama2_7b-2023-08-06-17-52-58/best_map3_peft"
+#  - "peft-meta_llama2_7b-2023-08-06-17-52-58/best_map3_peft"
+  - "peft-meta_llama2_7b-2023-08-08-00-23-11/checkpoint-89716"

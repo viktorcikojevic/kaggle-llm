@@ -82,12 +82,14 @@ def main(config_path: str):
 
     logger.info("initting models")
     tokenizer = AutoTokenizer.from_pretrained(load_from)
-    model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True, device_map="auto")
-    count_conversion_ratio(model, True)
-    model = prepare_model_for_kbit_training(model)
+    if config["use_8bit"]:
+        model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
+        count_conversion_ratio(model, True)
+        model = prepare_model_for_kbit_training(model)
+    else:
+        model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    logger.info(f"{model.__class__.__name__ = }")
     # https://github.com/huggingface/peft/blob/main/examples/int8_training/peft_adalora_whisper_large_training.py
-    r = 8
-    lora_alpha = r * 2
     # peft_config = AdaLoraConfig(
     #     init_r=12,
     #     target_r=4,
@@ -98,17 +100,13 @@ def main(config_path: str):
     #     deltaT=10,
     #     lora_alpha=lora_alpha,
     #     lora_dropout=0.1,
-    #     # target_modules=["k_proj", "q_proj", "v_proj", "out_proj", "fc1", "fc2"],
+    #     target_modules=["q_proj", "v_proj"],
     #     orth_reg_weight=0.5,
     # )
+    logger.info(json.dumps(config["peft_kwargs"]))
     peft_config = LoraConfig(
         inference_mode=False,
-        r=r,
-        # target_modules=["q_proj", "v_proj", "classifier", "pooler", "dropout"],
-        # target_modules=["q_proj", "v_proj", "classifier"],
-        # target_modules=["q_proj", "v_proj"],
-        lora_alpha=lora_alpha,
-        lora_dropout=0.1,
+        **config["peft_kwargs"],
     )
     model = WrappedPeftModel(model, peft_config)
     # model = get_peft_model(model, peft_config)
@@ -160,6 +158,7 @@ def main(config_path: str):
         ],
     )
     logger.info("initting trainer")
+    # trainer.train()
 
     train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3_peft")
 

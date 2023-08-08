@@ -3,7 +3,7 @@ data/
 *.pclprof
 __pycache__/
 *.pyc
-work_dirs/
+# work_dirs/
 .ipynb_checkpoints
 deploy_build/
 **/submission.csv
@@ -15,3 +15,4 @@ preds/
 *.csv
 wandb/
 model-weights/llama2-weights/llama2/llama-2-7b/consolidated.00.pth
+work_dirs/kaggle-dataset-deberta-v3-large/deberta-v3-large-2023-08-08-10-21-10

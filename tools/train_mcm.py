@@ -1,11 +1,13 @@
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
+    DataCollatorForMultipleChoicePrompting,
     WORK_DIRS_PATH,
     ROOT_PATH,
     compute_metrics,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
+    get_mcp_tokenize_dataset_from_df,
     train_and_save_best_model_on_error,
 )
 from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
@@ -15,14 +17,6 @@ import argparse
 import json
 import yaml
 import sys
-import os
-
-
-os.environ["MASTER_ADDR"] = "localhost"
-os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
-os.environ["RANK"] = "0"
-os.environ["LOCAL_RANK"] = "0"
-os.environ["WORLD_SIZE"] = "1"
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
@@ -60,6 +54,8 @@ def main(config_path: str):
     logger.info("initting dataset")
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
+    # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -90,6 +86,7 @@ def main(config_path: str):
         args=training_args,
         tokenizer=tokenizer,
         data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
+        # data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
         compute_metrics=compute_metrics,

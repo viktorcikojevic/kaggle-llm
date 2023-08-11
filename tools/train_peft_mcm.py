@@ -1,11 +1,13 @@
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
+    DataCollatorForMultipleChoicePrompting,
     WORK_DIRS_PATH,
     ROOT_PATH,
     compute_metrics,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
+    get_mcp_tokenize_dataset_from_df,
     WrappedPeftModel,
     train_and_save_best_model_on_error,
 )
@@ -119,6 +121,8 @@ def main(config_path: str):
     logger.info("initting dataset")
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
+    # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -153,6 +157,7 @@ def main(config_path: str):
         args=training_args,
         tokenizer=tokenizer,
         data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
+        # data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
         compute_metrics=compute_metrics,

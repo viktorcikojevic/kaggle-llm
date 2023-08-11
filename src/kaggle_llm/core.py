@@ -25,6 +25,65 @@ def count_words(text):
     return sum([1 for i in text.split() if len(i) > 0])
 
 
+def multiple_choice_prompting_preprocess(
+        tokenizer: PreTrainedTokenizerBase,
+        example: Dict[str, Any],
+):
+    text = (
+        f"Question: {example['prompt']}{tokenizer.sep_token}"
+        f"A. {example['A']}{tokenizer.sep_token}"
+        f"B. {example['B']}{tokenizer.sep_token}"
+        f"C. {example['C']}{tokenizer.sep_token}"
+        f"D. {example['D']}{tokenizer.sep_token}"
+        f"E. {example['E']}{tokenizer.sep_token}"
+        f"Answer: "
+    )
+    tokenized_example = tokenizer(
+        text,
+        # [
+        #     [example["prompt"], example["A"], example["B"], example["C"], example["D"], example["E"]]
+        # ],
+        truncation=True,
+    )
+    if "answer" in example:
+        tokenized_example["label"] = option_to_index[example["answer"]]
+    return tokenized_example
+
+
+@dataclass
+class DataCollatorForMultipleChoicePrompting:
+    tokenizer: PreTrainedTokenizerBase
+    padding: Union[bool, str, PaddingStrategy] = True
+    max_length: Optional[int] = None
+    pad_to_multiple_of: Optional[int] = None
+
+    def __call__(self, features: List[Dict[str, Any]]):
+        flattened_features = [
+            {
+                k: v
+                for k, v in feature.items()
+                if k not in ("label", "labels")
+            }
+            for feature in features
+        ]
+
+        # _max_length = max([len(x["input_ids"]) for x in flattened_features])
+        # print(f"{_max_length = }")
+
+        batch = self.tokenizer.pad(
+            flattened_features,
+            padding=self.padding,
+            max_length=self.max_length,
+            pad_to_multiple_of=self.pad_to_multiple_of,
+            return_tensors="pt",
+        )
+        if "label" in features[0].keys() or "labels" in features[0].keys():
+            label_name = "label" if "label" in features[0].keys() else "labels"
+            labels = [feature.pop(label_name) for feature in features]
+            batch["labels"] = torch.tensor(labels, dtype=torch.int64)
+        return batch
+
+
 def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any]):
     """
     The example is expected to be a dictionary with keys "prompt", "A", "B", "C", "D", "E", and "answer".
@@ -52,10 +111,9 @@ class DataCollatorForMultipleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
-    # max_length: Optional[int] = 512  # sometimes the max_length is 980+ which breaks the gpu
     pad_to_multiple_of: Optional[int] = None
 
-    def __call__(self, features):
+    def __call__(self, features: List[Dict[str, Any]]):
         batch_size = len(features)
         num_choices = len(features[0]["input_ids"])
         flattened_features = [
@@ -187,6 +245,20 @@ def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenize
     topic_cols = [c for c in df.columns if "topic" in c]
     return dataset.map(
         lambda example: multiple_choice_preprocess(tokenizer, example),
+        remove_columns=(
+            ["prompt", "A", "B", "C", "D", "E"]
+            + (["answer"] if "answer" in df else [])
+            + topic_cols
+            + (["index"] if "index" in df else [])
+        )
+    )
+
+
+def get_mcp_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
+    dataset = Dataset.from_pandas(df)
+    topic_cols = [c for c in df.columns if "topic" in c]
+    return dataset.map(
+        lambda example: multiple_choice_prompting_preprocess(tokenizer, example),
         remove_columns=(
             ["prompt", "A", "B", "C", "D", "E"]
             + (["answer"] if "answer" in df else [])

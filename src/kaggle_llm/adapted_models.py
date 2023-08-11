@@ -208,8 +208,14 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         reshaped_logits = logits.view(-1, num_choices)
 
         loss = None
+        # if labels is not None:
+        #     loss = torch.nn.functional.cross_entropy(reshaped_logits, labels)
         if labels is not None:
-            loss = torch.nn.functional.cross_entropy(reshaped_logits, labels)
+            one_hot_label = torch.nn.functional.one_hot(labels, num_classes=5)
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                logits.reshape(-1, 1),
+                one_hot_label.float().reshape(-1, 1)
+            )
 
         if not return_dict:
             output = (reshaped_logits,) + outputs[1:]
@@ -322,9 +328,15 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
         reshaped_logits = logits.view(-1, num_choices)
 
         loss = None
+        # if labels is not None:
+        #     loss_fct = torch.nn.CrossEntropyLoss()
+        #     loss = loss_fct(reshaped_logits, labels)
         if labels is not None:
-            loss_fct = torch.nn.CrossEntropyLoss()
-            loss = loss_fct(reshaped_logits, labels)
+            one_hot_label = torch.nn.functional.one_hot(labels, num_classes=5)
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                logits.reshape(-1, 1),
+                one_hot_label.float().reshape(-1, 1)
+            )
 
         if not return_dict:
             output = (reshaped_logits,) + outputs[1:]

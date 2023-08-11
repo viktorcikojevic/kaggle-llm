@@ -162,8 +162,8 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    trainer.train()
-    # train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3_peft")
+    # trainer.train()
+    train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3_peft")
 
 
 if __name__ == "__main__":

@@ -7,25 +7,25 @@ raw_inputs:
 
 inputs:
   - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/train.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions_2.csv"
 
-load_from: "microsoft/deberta-v3-large"
+#load_from: "microsoft/deberta-v3-large"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_large"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/big_science_mt0_xl"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
-#load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/meta_llama2_7b"
+load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/meta_llama2_7b"
 
-#report_to: ["wandb"]
-report_to: []
+report_to: ["wandb"]
+#report_to: []
 lr: 5e-6
-#use_8bit: true
-use_8bit: false
+use_8bit: true
+#use_8bit: false
 # ---------------------------
 #peft_lr: 5e-5
 #peft_class: LoraConfig
@@ -58,10 +58,10 @@ use_8bit: false
 #  orth_reg_weight: 0.5
 
 # ---------------------------
-peft_lr: 5e-5
+peft_lr: 5e-6
 peft_class: AdaLoraConfig
 peft_kwargs:
-  init_r: 2048
+  init_r: 1200
   target_r: 1024
   beta1: 0.85
   beta2: 0.85
@@ -70,7 +70,8 @@ peft_kwargs:
   deltaT: 10
   lora_alpha: 256
   lora_dropout: 0.1
-  target_modules: ["query_proj", "value_proj"]
+#  target_modules: ["query_proj", "value_proj"]
+  target_modules: ["q_proj", "v_proj"]
   orth_reg_weight: 0.5
 
 

@@ -30,6 +30,7 @@ def multiple_choice_prompting_preprocess(
         example: Dict[str, Any],
 ):
     text = (
+        f"Select the most correct answer between A, B, C, D, E to the given Question.{tokenizer.sep_token}"
         f"Question: {example['prompt']}{tokenizer.sep_token}"
         f"A. {example['A']}{tokenizer.sep_token}"
         f"B. {example['B']}{tokenizer.sep_token}"
@@ -40,11 +41,11 @@ def multiple_choice_prompting_preprocess(
     )
     tokenized_example = tokenizer(
         text,
-        # [
-        #     [example["prompt"], example["A"], example["B"], example["C"], example["D"], example["E"]]
-        # ],
         truncation=True,
     )
+    all_stop_token_indices = [i for i, x in enumerate(tokenized_example.data["input_ids"]) if x == tokenizer.sep_token_id]
+    first_stop_token_idx = len(all_stop_token_indices) - 1 - 5
+    tokenized_example["stop_token_indices"] = all_stop_token_indices[first_stop_token_idx: first_stop_token_idx+5]
     if "answer" in example:
         tokenized_example["label"] = option_to_index[example["answer"]]
     return tokenized_example
@@ -311,6 +312,8 @@ def train_and_save_best_model_on_error(
         trainer.train()
     except KeyboardInterrupt:
         print(f"training interrupted, moving on to save the model")
+    except Exception as e:
+        print(f"training FAILED: {repr(e)}")
     finally:
         if trainer.state.best_model_checkpoint is not None:
             print(f"trainer has some best models stored: {trainer.state.best_model_checkpoint}, setting it as the best checkpoint")

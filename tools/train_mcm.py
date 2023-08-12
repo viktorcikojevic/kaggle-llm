@@ -52,10 +52,10 @@ def main(config_path: str):
     logger.info("initted models")
 
     logger.info("initting dataset")
-    train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
-    val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
-    # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
-    # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
+    # train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
+    # val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
+    val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -85,10 +85,14 @@ def main(config_path: str):
         model=model,
         args=training_args,
         tokenizer=tokenizer,
-        data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
-        # data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
+        # data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
+        data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
+        # eval_dataset={
+        #     "train": train_tokenized_dataset,
+        #     "val": val_tokenized_dataset,
+        # },
         compute_metrics=compute_metrics,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=4),

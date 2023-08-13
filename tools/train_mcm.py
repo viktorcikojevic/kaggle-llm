@@ -64,6 +64,7 @@ def main(config_path: str):
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
+        lr_scheduler_type="cosine",
         greater_is_better=True,
         warmup_ratio=warmup_ratio,
         learning_rate=float(config["lr"]),

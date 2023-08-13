@@ -1,15 +1,18 @@
 from typing import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction, PreTrainedModel, Trainer
+from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer
+import transformers
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
 from datasets import Dataset
 from pathlib import Path
-from peft import PeftModel, PeftConfig
+from peft import PeftModel, PeftConfig, prepare_model_for_kbit_training
+import peft
 import pandas as pd
 import numpy as np
 import torch
+import json
 import os
 
 
@@ -321,3 +324,116 @@ def train_and_save_best_model_on_error(
         else:
             print(f"trainer has NO best models stored, returning")
             return
+
+
+def print_trainable_parameters(model):
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        num_params = param.numel()
+        # if using DS Zero 3 and the weights are initialized empty
+        if num_params == 0 and hasattr(param, "ds_numel"):
+            num_params = param.ds_numel
+
+        all_param += num_params
+        if param.requires_grad:
+            trainable_params += num_params
+    print(
+        f"trainable params: {trainable_params:,d} || all params: {all_param:,d} || trainable%: {100 * trainable_params / all_param}"
+    )
+
+
+def count_conversion_ratio(model, print_convert_names: bool = True):
+    f16_count = 0
+    all_count = 0
+    for n, p in model.named_parameters():
+        all_count += 1
+        if p.dtype == torch.float16:
+            if print_convert_names:
+                print(n)
+            f16_count += 1
+    conversion_ratio = f16_count / all_count
+    print(f"{conversion_ratio = }")
+
+
+def build_peft_model(
+        load_from: str,
+        peft_class: str,
+        transformer_class: str = "AutoModelForMultipleChoice",
+        use_8bit: bool = False,
+        **peft_kwargs
+) -> Tuple[WrappedPeftModel, PreTrainedTokenizerBase]:
+    tokenizer = AutoTokenizer.from_pretrained(load_from)
+    transformer_constructor = getattr(transformers, transformer_class)
+    if use_8bit:
+        model = transformer_constructor.from_pretrained(load_from, load_in_8bit=True)
+        count_conversion_ratio(model, True)
+        model = prepare_model_for_kbit_training(model)
+    else:
+        model = transformer_constructor.from_pretrained(load_from)
+    print(f"{model.__class__.__name__ = }")
+    print(json.dumps(peft_kwargs))
+    config_class = getattr(peft, peft_class)
+    print(f"{config_class = }")
+    peft_config = config_class(
+        inference_mode=False,
+        **peft_kwargs,
+    )
+    model = WrappedPeftModel(model, peft_config)
+    print(print_trainable_parameters(model))
+    return model, tokenizer
+
+
+def build_trainer(
+        model,
+        tokenizer: PreTrainedTokenizerBase,
+        learning_rate: float,
+        report_to: List[str],
+        output_dir: str,
+        train_dataset,
+        eval_dataset,
+        data_collator,
+        metric_for_best_model: str = "map3",
+        per_device_train_batch_size: int = 1,
+        per_device_eval_batch_size: int = 2,
+        early_stopping_patience: int = 4,
+        warmup_epochs: int = 1,
+        total_epochs: int = 20,
+):
+    warmup_ratio = warmup_epochs / total_epochs
+    training_args = TrainingArguments(
+        lr_scheduler_type="cosine",
+        metric_for_best_model=metric_for_best_model,
+        greater_is_better=True,
+        warmup_ratio=warmup_ratio,
+        learning_rate=learning_rate,
+        per_device_train_batch_size=per_device_train_batch_size,
+        per_device_eval_batch_size=per_device_eval_batch_size,
+        load_best_model_at_end=True,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        num_train_epochs=total_epochs,
+        save_total_limit=2,
+        report_to=report_to,
+        output_dir=output_dir,
+        remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
+        label_names=["labels"],  # for peft
+        # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
+        fp16=True,
+        ddp_find_unused_parameters=False,
+        # optim=transformers.training_args.OptimizerNames.ADAMW_BNB,
+        # gradient_checkpointing=True,
+        # gradient_accumulation_steps=4,
+    )
+    return Trainer(
+        model=model,
+        args=training_args,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        compute_metrics=compute_metrics,
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=early_stopping_patience),
+        ],
+    )

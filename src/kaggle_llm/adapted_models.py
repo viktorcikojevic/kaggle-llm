@@ -1,7 +1,7 @@
 from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.llama.modeling_llama import LlamaPreTrainedModel, LlamaModel
 from transformers.modeling_outputs import MultipleChoiceModelOutput
-from transformers import AutoModelForMultipleChoice
+from transformers import AutoModelForMultipleChoice, AutoConfig
 from pathlib import Path
 from typing import *
 import torch.nn as nn
@@ -18,9 +18,9 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
     _keep_in_fp32_modules = [
         # "pooler",
         # "dropout",
-        # "classifier",
-        "classifier0",
-        "classifier1",
+        "classifier",
+        # "classifier0",
+        # "classifier1",
     ]
 
     def __init__(self, config: LlamaConfig):
@@ -32,10 +32,10 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         config.pooler_hidden_act = "gelu"
         # self.pooler = ContextPooler(config)
         # output_dim = self.pooler.output_dim
-        # self.classifier = nn.Linear(4096, 1)
-        self.embed_dims = 4096
-        self.classifier0 = nn.Linear(self.embed_dims, 128, bias=False)
-        self.classifier1 = nn.Linear(128*NUM_CHOICES, NUM_CHOICES)
+        self.classifier = nn.Linear(4096, 1)
+        # self.embed_dims = 4096
+        # self.classifier0 = nn.Linear(self.embed_dims, 128, bias=False)
+        # self.classifier1 = nn.Linear(128*NUM_CHOICES, NUM_CHOICES)
         drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
         self.init_weights()
@@ -81,57 +81,57 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
         batch_size = input_ids.shape[0]
 
-        # flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
-        # flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
-        # # flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
-        # flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
-        # flat_inputs_embeds = (
-        #     inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
-        #     if inputs_embeds is not None
-        #     else None
-        # )
-
-        # outputs = self.model.forward(
-        #     input_ids=flat_input_ids,
-        #     attention_mask=flat_attention_mask,
-        #     inputs_embeds=flat_inputs_embeds,
-        #     position_ids=flat_position_ids,
-        #     output_attentions=output_attentions,
-        #     output_hidden_states=output_hidden_states,
-        #     return_dict=return_dict,
-        # )
+        flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+        flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
+        # flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
+        flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
+        flat_inputs_embeds = (
+            inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
+            if inputs_embeds is not None
+            else None
+        )
+        #
         outputs = self.model.forward(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            inputs_embeds=inputs_embeds,
-            position_ids=position_ids,
+            input_ids=flat_input_ids,
+            attention_mask=flat_attention_mask,
+            inputs_embeds=flat_inputs_embeds,
+            position_ids=flat_position_ids,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+        # outputs = self.model.forward(
+        #     input_ids=input_ids,
+        #     attention_mask=attention_mask,
+        #     inputs_embeds=inputs_embeds,
+        #     position_ids=position_ids,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # )
 
         encoder_layer = outputs[0]
         # pooled_output = self.pooler(encoder_layer)
         # pooled_output = encoder_layer[:, 0]
 
-        # if input_ids is not None:
-        #     sequence_lengths = (torch.ne(flat_input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
-        # else:
-        #     sequence_lengths = -1
-        # pooled_output = encoder_layer[
-        #     torch.arange(encoder_layer.shape[0], device=encoder_layer.device),
-        #     sequence_lengths,
-        #     :
-        # ]
-        #
-        # pooled_output = self.dropout(pooled_output)
-        # logits = self.classifier(pooled_output)
-        # reshaped_logits = logits.view(-1, num_choices)
+        if input_ids is not None:
+            sequence_lengths = (torch.ne(flat_input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
+        else:
+            sequence_lengths = -1
+        pooled_output = encoder_layer[
+            torch.arange(encoder_layer.shape[0], device=encoder_layer.device),
+            sequence_lengths,
+            :
+        ]
 
-        pooled_output = torch.gather(encoder_layer, 1, stop_token_indices.unsqueeze(-1).tile(1, 1, self.embed_dims))
-        compressed_output = self.classifier0(pooled_output).reshape((batch_size, -1))
-        compressed_output = torch.nn.functional.gelu(compressed_output)
-        reshaped_logits = self.classifier1(compressed_output)
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+        reshaped_logits = logits.view(-1, num_choices)
+
+        # pooled_output = torch.gather(encoder_layer, 1, stop_token_indices.unsqueeze(-1).tile(1, 1, self.embed_dims))
+        # compressed_output = self.classifier0(pooled_output).reshape((batch_size, -1))
+        # compressed_output = torch.nn.functional.gelu(compressed_output)
+        # reshaped_logits = self.classifier1(compressed_output)
 
         loss = None
         if labels is not None:

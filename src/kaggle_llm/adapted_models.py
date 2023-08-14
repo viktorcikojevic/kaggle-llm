@@ -179,10 +179,10 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
 
         self.deberta = DebertaV2Model(config)
 
-        num_choices = 5
-        self.classifier0 = nn.Linear(1024, 256, bias=False)
-        self.classifier1 = nn.Linear(256*num_choices, num_choices)
-        # self.classifier = nn.Linear(1024, 5)
+        # num_choices = 5
+        # self.classifier0 = nn.Linear(1024, 256, bias=False)
+        # self.classifier1 = nn.Linear(256*num_choices, num_choices)
+        self.classifier = nn.Linear(1024, 1)
 
         self.init_weights()
 
@@ -215,58 +215,58 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
         num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
         batch_size = input_ids.shape[0]
 
-        # flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
-        # flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
-        # flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
-        # flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
-        # flat_inputs_embeds = (
-        #     inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
-        #     if inputs_embeds is not None
-        #     else None
-        # )
-        #
-        # outputs = self.deberta(
-        #     flat_input_ids,
-        #     position_ids=flat_position_ids,
-        #     token_type_ids=flat_token_type_ids,
-        #     attention_mask=flat_attention_mask,
-        #     inputs_embeds=flat_inputs_embeds,
-        #     output_attentions=output_attentions,
-        #     output_hidden_states=output_hidden_states,
-        #     return_dict=return_dict,
-        # )
+        flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+        flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
+        flat_token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
+        flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
+        flat_inputs_embeds = (
+            inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1))
+            if inputs_embeds is not None
+            else None
+        )
 
         outputs = self.deberta(
-            input_ids,
-            position_ids=position_ids,
-            token_type_ids=token_type_ids,
-            attention_mask=attention_mask,
-            inputs_embeds=inputs_embeds,
+            flat_input_ids,
+            position_ids=flat_position_ids,
+            token_type_ids=flat_token_type_ids,
+            attention_mask=flat_attention_mask,
+            inputs_embeds=flat_inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
 
+        # outputs = self.deberta(
+        #     input_ids,
+        #     position_ids=position_ids,
+        #     token_type_ids=token_type_ids,
+        #     attention_mask=attention_mask,
+        #     inputs_embeds=inputs_embeds,
+        #     output_attentions=output_attentions,
+        #     output_hidden_states=output_hidden_states,
+        #     return_dict=return_dict,
+        # )
+
         encoder_layer = outputs[0]
 
-        # if input_ids is not None:
-        #     # sequence_lengths = (torch.ne(flat_input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
-        #     sequence_lengths = (torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
-        # else:
-        #     sequence_lengths = -1
-        # pooled_output = encoder_layer[
-        #     torch.arange(encoder_layer.shape[0], device=encoder_layer.device),
-        #     sequence_lengths,
-        #     :
-        # ]
-        # logits = self.classifier(pooled_output)
-        # reshaped_logits = logits.view(-1, num_choices)
+        if input_ids is not None:
+            sequence_lengths = (torch.ne(flat_input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
+            # sequence_lengths = (torch.ne(input_ids, self.config.pad_token_id).sum(-1) - 1).to(encoder_layer.device)
+        else:
+            sequence_lengths = -1
+        pooled_output = encoder_layer[
+            torch.arange(encoder_layer.shape[0], device=encoder_layer.device),
+            sequence_lengths,
+            :
+        ]
+        logits = self.classifier(pooled_output)
+        reshaped_logits = logits.view(-1, num_choices)
 
-        # take 5 tokens from the [SEP] locations
-        pooled_output = torch.gather(encoder_layer, 1, stop_token_indices.unsqueeze(-1).tile(1, 1, 1024))
-        compressed_output = self.classifier0(pooled_output).reshape((batch_size, -1))
-        compressed_output = torch.nn.functional.gelu(compressed_output)
-        reshaped_logits = self.classifier1(compressed_output)
+        # # take 5 tokens from the [SEP] locations
+        # pooled_output = torch.gather(encoder_layer, 1, stop_token_indices.unsqueeze(-1).tile(1, 1, 1024))
+        # compressed_output = self.classifier0(pooled_output).reshape((batch_size, -1))
+        # compressed_output = torch.nn.functional.gelu(compressed_output)
+        # reshaped_logits = self.classifier1(compressed_output)
 
         # reshaped_logits = self.classifier(pooled_output)
 

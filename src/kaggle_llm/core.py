@@ -1,4 +1,5 @@
 from typing import *
+from kaggle_llm.causal_lm_filters import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
 from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer
 import transformers
@@ -177,7 +178,7 @@ def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):
     return get_map3_df(label_df, pred_df)["scores"].mean()
 
 
-def compute_metrics(preds: EvalPrediction) -> Dict:
+def compute_map3_hf(preds: EvalPrediction) -> Dict:
     ids = list(range(len(preds.label_ids)))
     normalised_preds = normalize(-preds.predictions)
     preds_df = pd.DataFrame({
@@ -358,7 +359,8 @@ def count_conversion_ratio(model, print_convert_names: bool = True):
 
 def build_peft_model(
         load_from: str,
-        peft_class: str,
+        use_peft: bool = False,
+        peft_class: str = "AdaLoraConfig",
         transformer_class: str = "AutoModelForMultipleChoice",
         use_8bit: bool = False,
         **peft_kwargs
@@ -372,6 +374,8 @@ def build_peft_model(
     else:
         model = transformer_constructor.from_pretrained(load_from)
     print(f"{model.__class__.__name__ = }")
+    if not use_peft:
+        return model, tokenizer
     print(json.dumps(peft_kwargs))
     config_class = getattr(peft, peft_class)
     print(f"{config_class = }")
@@ -394,17 +398,19 @@ def build_trainer(
         eval_dataset,
         data_collator,
         metric_for_best_model: str = "map3",
+        greater_is_better: bool = True,
         per_device_train_batch_size: int = 1,
         per_device_eval_batch_size: int = 2,
         early_stopping_patience: int = 4,
         warmup_epochs: int = 1,
         total_epochs: int = 20,
+        compute_metrics: Optional[Callable] = compute_map3_hf,
 ):
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         lr_scheduler_type="cosine",
         metric_for_best_model=metric_for_best_model,
-        greater_is_better=True,
+        greater_is_better=greater_is_better,
         warmup_ratio=warmup_ratio,
         learning_rate=learning_rate,
         per_device_train_batch_size=per_device_train_batch_size,
@@ -437,3 +443,15 @@ def build_trainer(
             EarlyStoppingCallback(early_stopping_patience=early_stopping_patience),
         ],
     )
+
+
+def load_causal_lm_dataset(
+        input_paths: List[Union[str, Path]],
+) -> pd.DataFrame:
+    dfs = []
+    for ip in input_paths:
+        df = pd.read_csv(ip)
+        df = drop_df_cols_for_dataset(df)
+        dfs.append(df)
+    catted_df = pd.concat(dfs, axis=0).reset_index()
+    return catted_df

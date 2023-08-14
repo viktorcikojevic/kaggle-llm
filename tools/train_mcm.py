@@ -4,13 +4,14 @@ from kaggle_llm.core import (
     DataCollatorForMultipleChoicePrompting,
     WORK_DIRS_PATH,
     ROOT_PATH,
-    compute_metrics,
+    compute_map3_hf,
+    build_peft_model,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
     get_mcp_tokenize_dataset_from_df,
     train_and_save_best_model_on_error,
 )
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
+from transformers import TrainingArguments, Trainer, EarlyStoppingCallback
 from loguru import logger
 from datetime import datetime
 import argparse
@@ -44,18 +45,23 @@ def main(config_path: str):
     logger.info("loaded data")
 
     logger.info("initting models")
-    tokenizer = AutoTokenizer.from_pretrained(load_from)
-    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
-    model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    model, tokenizer = build_peft_model(
+        config["load_from"],
+        use_peft=config["use_peft"],
+        peft_class=config["peft_class"],
+        transformer_class="AutoModelForMultipleChoice",
+        use_8bit=config["use_8bit"],
+        **config["peft_kwargs"]
+    )
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")
 
     logger.info("initting dataset")
-    # train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
-    # val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
-    train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
-    val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
+    train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
+    val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
+    # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -86,22 +92,22 @@ def main(config_path: str):
         model=model,
         args=training_args,
         tokenizer=tokenizer,
-        # data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
-        data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
+        data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
+        # data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
-        # eval_dataset={
-        #     "train": train_tokenized_dataset,
-        #     "val": val_tokenized_dataset,
-        # },
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_map3_hf,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=4),
         ],
     )
     logger.info("initting trainer")
 
-    train_and_save_best_model_on_error(trainer, model_output_dir, "best_map3")
+    train_and_save_best_model_on_error(
+        trainer,
+        model_output_dir,
+        "best_map3_peft" if config["use_peft"] else "best_map3",
+    )
 
 
 if __name__ == "__main__":

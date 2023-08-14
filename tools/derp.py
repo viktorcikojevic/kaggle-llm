@@ -5,7 +5,7 @@ from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
     WORK_DIRS_PATH,
     ROOT_PATH,
-    compute_metrics,
+    compute_map3_hf,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
     get_mcp_tokenize_dataset_from_df,

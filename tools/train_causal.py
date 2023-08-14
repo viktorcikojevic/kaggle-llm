@@ -93,6 +93,7 @@ def main(config_path: str):
         learning_rate=float(config["peft_lr"]),
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
+        total_epochs=config["total_epochs"],
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
         data_collator=(
@@ -108,8 +109,8 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    trainer.train()
-    # train_and_save_best_model_on_error(trainer, model_output_dir, "best_eval_loss_peft")
+    # trainer.train()
+    train_and_save_best_model_on_error(trainer, model_output_dir, "best_eval_loss_peft")
 
 
 if __name__ == "__main__":

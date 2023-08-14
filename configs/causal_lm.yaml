@@ -17,6 +17,7 @@ inputs:
 use_8bit: false
 block_size: 50
 cutoff_len: 120
+total_epochs: 100
 transformer_class: "AutoModelForMaskedLM"
 load_from: "microsoft/deberta-v3-large"
 batch_size: 8
@@ -33,7 +34,7 @@ use_peft: false
 
 #report_to: ["wandb"]
 report_to: []
-peft_lr: 5e-5
+peft_lr: 5e-4
 peft_class: AdaLoraConfig
 peft_kwargs:
   init_r: 1200

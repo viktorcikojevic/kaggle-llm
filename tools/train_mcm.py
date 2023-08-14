@@ -103,11 +103,12 @@ def main(config_path: str):
     )
     logger.info("initting trainer")
 
-    train_and_save_best_model_on_error(
-        trainer,
-        model_output_dir,
-        "best_map3_peft" if config["use_peft"] else "best_map3",
-    )
+    trainer.train()
+    # train_and_save_best_model_on_error(
+    #     trainer,
+    #     model_output_dir,
+    #     "best_map3_peft" if config["use_peft"] else "best_map3",
+    # )
 
 
 if __name__ == "__main__":

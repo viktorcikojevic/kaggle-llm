@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/viktor/Documents/kaggle/kaggle_llm/src")
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
@@ -23,7 +25,9 @@ import sys
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
 
 
-def main(config_path: str):
+def main(config_path: str,
+         work_dir_path: str = None,
+         ):
     with open(config_path, "rb") as f:
         config = yaml.load(f, yaml.FullLoader)
 
@@ -38,7 +42,10 @@ def main(config_path: str):
         total_fold=config["fold"]["of"],
     )
     model_name = load_from.split("/")[-1]
-    model_output_dir = WORK_DIRS_PATH / f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    if work_dir_path is None:
+        work_dir_path = WORK_DIRS_PATH
+    model_output_dir = os.path.join(work_dir_path, f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
+    model_output_dir = Path(model_output_dir)
     model_output_dir.mkdir(exist_ok=True, parents=True)
     val_df.to_csv(model_output_dir / "val_df.csv")
     logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
@@ -114,5 +121,7 @@ def main(config_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
+    parser.add_argument("--work-dir-path", type=str, help="path to work dir", required=False)
     _args, _ = parser.parse_known_args()
-    main(_args.config)
+    print(f"Using args: {_args}")
+    main(_args.config, _args.work_dir_path)

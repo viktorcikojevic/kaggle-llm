@@ -1,0 +1,14 @@
+raw_inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
+
+inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
+
+load_from: "microsoft/deberta-v3-large"
+
+report_to: []
+lr: 5e-6
+peft_lr: 5e-6
+fold:
+  num: 0
+  of: 10

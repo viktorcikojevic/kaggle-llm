@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/viktor/Documents/kaggle/kaggle_llm/src")
 from kaggle_llm.core import (
     ROOT_PATH,
     count_words,
@@ -88,7 +90,9 @@ def get_sentence_embeddings(
         convert_to_tensor=True,
         normalize_embeddings=True,
     ).half()
-    sentence_embeddings = sentence_embeddings.detach().cpu().numpy()
+    sentence_embeddings = sentence_embeddings.detach().cpu().numpy().astype(np.float32)
+    print(f"[I] sentence_embeddings.shape: {sentence_embeddings.shape}")
+    
 
     sentence_index = faiss.IndexFlatIP(sentence_embeddings.shape[1])
     sentence_index.add(sentence_embeddings)
@@ -150,7 +154,7 @@ def main(
             convert_to_tensor=True,
             normalize_embeddings=True,
         ).half()
-        question_embeddings = question_embeddings.detach().cpu().numpy()
+        question_embeddings = question_embeddings.detach().cpu().numpy().astype(np.float32)
 
         distance, indices = sentence_index.search(question_embeddings, k)
 

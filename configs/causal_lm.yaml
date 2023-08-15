@@ -8,19 +8,19 @@ raw_inputs:
 
 inputs:
   - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/0_to_25000.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/25000_to_50000.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/50000_to_75000.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/75000_to_100000.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/100000_to_125000.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/125000_to_131049.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/25000_to_50000.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/50000_to_75000.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/75000_to_100000.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/100000_to_125000.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/wikipedia_sentences/125000_to_131049.csv"
 
 use_8bit: false
-block_size: 50
-cutoff_len: 120
+block_size: 100
+cutoff_len: 150
 total_epochs: 100
 transformer_class: "AutoModelForMaskedLM"
 load_from: "microsoft/deberta-v3-large"
-batch_size: 8
+batch_size: 4
 use_peft: false
 
 #use_8bit: true
@@ -32,9 +32,9 @@ use_peft: false
 #use_peft: true
 
 
-#report_to: ["wandb"]
-report_to: []
-peft_lr: 5e-4
+report_to: ["wandb"]
+#report_to: []
+peft_lr: 5e-5
 peft_class: AdaLoraConfig
 peft_kwargs:
   init_r: 1200

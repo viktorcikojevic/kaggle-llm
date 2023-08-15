@@ -37,11 +37,11 @@ def split_text_to_sentences(text: str, block_size: int) -> List[str]:
 def main(
         config_path: str,
         output_dir: str,
-        block_size: int,
 ):
     with open(config_path, "rb") as f:
         config = yaml.load(f, yaml.FullLoader)
     print(json.dumps(config, indent=4))
+    block_size = config["block_size"]
 
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -74,10 +74,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
     parser.add_argument("output_dir")
-    parser.add_argument("--block-size", required=False, type=int, default=128)
     _args, _ = parser.parse_known_args()
     main(
         _args.config,
         _args.output_dir,
-        _args.block_size
     )

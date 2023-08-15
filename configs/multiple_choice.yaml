@@ -6,16 +6,18 @@ raw_inputs:
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions_2.csv"
 
 inputs:
-  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
+#  - "/home/clay/research/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/extra_train_set.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/additional-train-data-for-llm-science-exam/6000_train_examples.csv"
-#  - "/home/clay/research/kaggle/kaggle_llm/data/community_datasets/eduqg_llm_formatted.csv"
+  - "/home/clay/research/kaggle/kaggle_llm/data/community_datasets/eduqg_llm_formatted.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/train.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions.csv"
 #  - "/home/clay/research/kaggle/kaggle_llm/data/data_dumps/context_df/more_questions_raw_questions_2.csv"
 
-load_from: "microsoft/deberta-v3-large"
+#load_from: "microsoft/deberta-v3-large"
+load_from: "/home/clay/research/kaggle/kaggle_llm/work_dirs/clm-peft-deberta-v3-large-2023-08-14-23-22-33/best_eval_loss_peft"
+#load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/deberta-v3-large-notebook-weights"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/h2o_llama_7b"
 #load_from: "/home/clay/research/kaggle/kaggle_llm/data/pretrained_models/meta_llama2_7b"

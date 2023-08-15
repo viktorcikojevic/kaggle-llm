@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/viktor/Documents/kaggle/kaggle_llm/src")
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     ROOT_PATH,

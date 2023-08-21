@@ -1,14 +1,20 @@
 from typing import *
+from kaggle_llm.causal_lm_filters import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction
+from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer
+import transformers
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
 from dataclasses import dataclass
 from datasets import Dataset
 from pathlib import Path
+from peft import PeftModel, PeftConfig, prepare_model_for_kbit_training
+import peft
 import pandas as pd
 import numpy as np
 import torch
+import json
+import os
 
 
 ROOT_PATH = Path(__file__).resolve().absolute().parent.parent.parent
@@ -21,6 +27,66 @@ option_to_index = {v: i for i, v in enumerate(options)}
 
 def count_words(text):
     return sum([1 for i in text.split() if len(i) > 0])
+
+
+def multiple_choice_prompting_preprocess(
+        tokenizer: PreTrainedTokenizerBase,
+        example: Dict[str, Any],
+):
+    text = (
+        f"Select the most correct answer between A, B, C, D, E to the given Question.{tokenizer.sep_token}"
+        f"Question: {example['prompt']}{tokenizer.sep_token}"
+        f"A. {example['A']}{tokenizer.sep_token}"
+        f"B. {example['B']}{tokenizer.sep_token}"
+        f"C. {example['C']}{tokenizer.sep_token}"
+        f"D. {example['D']}{tokenizer.sep_token}"
+        f"E. {example['E']}{tokenizer.sep_token}"
+        f"Answer: "
+    )
+    tokenized_example = tokenizer(
+        text,
+        truncation=True,
+    )
+    all_stop_token_indices = [i for i, x in enumerate(tokenized_example.data["input_ids"]) if x == tokenizer.sep_token_id]
+    first_stop_token_idx = len(all_stop_token_indices) - 1 - 5
+    tokenized_example["stop_token_indices"] = all_stop_token_indices[first_stop_token_idx: first_stop_token_idx+5]
+    if "answer" in example:
+        tokenized_example["label"] = option_to_index[example["answer"]]
+    return tokenized_example
+
+
+@dataclass
+class DataCollatorForMultipleChoicePrompting:
+    tokenizer: PreTrainedTokenizerBase
+    padding: Union[bool, str, PaddingStrategy] = True
+    max_length: Optional[int] = None
+    pad_to_multiple_of: Optional[int] = None
+
+    def __call__(self, features: List[Dict[str, Any]]):
+        flattened_features = [
+            {
+                k: v
+                for k, v in feature.items()
+                if k not in ("label", "labels")
+            }
+            for feature in features
+        ]
+
+        # _max_length = max([len(x["input_ids"]) for x in flattened_features])
+        # print(f"{_max_length = }")
+
+        batch = self.tokenizer.pad(
+            flattened_features,
+            padding=self.padding,
+            max_length=self.max_length,
+            pad_to_multiple_of=self.pad_to_multiple_of,
+            return_tensors="pt",
+        )
+        if "label" in features[0].keys() or "labels" in features[0].keys():
+            label_name = "label" if "label" in features[0].keys() else "labels"
+            labels = [feature.pop(label_name) for feature in features]
+            batch["labels"] = torch.tensor(labels, dtype=torch.int64)
+        return batch
 
 
 def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any]):
@@ -50,10 +116,9 @@ class DataCollatorForMultipleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
-    # max_length: Optional[int] = 512  # sometimes the max_length is 980+ which breaks the gpu
     pad_to_multiple_of: Optional[int] = None
 
-    def __call__(self, features):
+    def __call__(self, features: List[Dict[str, Any]]):
         batch_size = len(features)
         num_choices = len(features[0]["input_ids"])
         flattened_features = [
@@ -113,7 +178,7 @@ def get_map3(label_df: pd.DataFrame, pred_df: pd.DataFrame):
     return get_map3_df(label_df, pred_df)["scores"].mean()
 
 
-def compute_metrics(preds: EvalPrediction) -> Dict:
+def compute_map3_hf(preds: EvalPrediction) -> Dict:
     ids = list(range(len(preds.label_ids)))
     normalised_preds = normalize(-preds.predictions)
     preds_df = pd.DataFrame({
@@ -192,3 +257,201 @@ def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenize
             + (["index"] if "index" in df else [])
         )
     )
+
+
+def get_mcp_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
+    dataset = Dataset.from_pandas(df)
+    topic_cols = [c for c in df.columns if "topic" in c]
+    return dataset.map(
+        lambda example: multiple_choice_prompting_preprocess(tokenizer, example),
+        remove_columns=(
+            ["prompt", "A", "B", "C", "D", "E"]
+            + (["answer"] if "answer" in df else [])
+            + topic_cols
+            + (["index"] if "index" in df else [])
+        )
+    )
+
+
+class WrappedPeftModel(PeftModel):
+    """ peft model with some custom layers that's not handled by peft, e.g. classifier layers """
+    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "default"):
+        PeftModel.__init__(self, model, peft_config, adapter_name)
+
+    def save_pretrained(
+        self,
+        save_directory: str,
+        safe_serialization: bool = False,
+        selected_adapters: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
+        PeftModel.save_pretrained(self, save_directory, safe_serialization, selected_adapters, **kwargs)
+        if hasattr(self.base_model, "save_extra_modules"):
+            self.base_model.save_extra_modules(save_directory)
+            print(f"saved extra modules for class {self.base_model.__class__.__name__}")
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        model: PreTrainedModel,
+        model_id: Union[str, os.PathLike],
+        adapter_name: str = "default",
+        is_trainable: bool = False,
+        config: Optional[PeftConfig] = None,
+        **kwargs: Any,
+    ):
+        out_model = PeftModel.from_pretrained(model, model_id, adapter_name, is_trainable, config, **kwargs)
+        if hasattr(out_model.base_model, "load_extra_modules"):
+            out_model.base_model.load_extra_modules(model_id)
+            print(f"loaded extra modules for class {out_model.base_model.__class__.__name__}")
+        return out_model
+
+
+def train_and_save_best_model_on_error(
+        trainer: Trainer,
+        model_output_dir: Path,
+        best_model_dir_name: str = "best_map3"
+):
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        print(f"training interrupted, moving on to save the model")
+    except Exception as e:
+        print(f"training FAILED: {repr(e)}")
+    finally:
+        if trainer.state.best_model_checkpoint is not None:
+            print(f"trainer has some best models stored: {trainer.state.best_model_checkpoint}, setting it as the best checkpoint")
+            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir / best_model_dir_name))
+        else:
+            print(f"trainer has NO best models stored, returning")
+            return
+
+
+def print_trainable_parameters(model):
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        num_params = param.numel()
+        # if using DS Zero 3 and the weights are initialized empty
+        if num_params == 0 and hasattr(param, "ds_numel"):
+            num_params = param.ds_numel
+
+        all_param += num_params
+        if param.requires_grad:
+            trainable_params += num_params
+    print(
+        f"trainable params: {trainable_params:,d} || all params: {all_param:,d} || trainable%: {100 * trainable_params / all_param}"
+    )
+
+
+def count_conversion_ratio(model, print_convert_names: bool = True):
+    f16_count = 0
+    all_count = 0
+    for n, p in model.named_parameters():
+        all_count += 1
+        if p.dtype == torch.float16:
+            if print_convert_names:
+                print(n)
+            f16_count += 1
+    conversion_ratio = f16_count / all_count
+    print(f"{conversion_ratio = }")
+
+
+def build_peft_model(
+        load_from: str,
+        use_peft: bool = False,
+        peft_class: str = "AdaLoraConfig",
+        transformer_class: str = "AutoModelForMultipleChoice",
+        use_8bit: bool = False,
+        **peft_kwargs
+) -> Tuple[WrappedPeftModel, PreTrainedTokenizerBase]:
+    tokenizer = AutoTokenizer.from_pretrained(load_from)
+    transformer_constructor = getattr(transformers, transformer_class)
+    if use_8bit:
+        model = transformer_constructor.from_pretrained(load_from, load_in_8bit=True)
+        count_conversion_ratio(model, True)
+        model = prepare_model_for_kbit_training(model)
+    else:
+        model = transformer_constructor.from_pretrained(load_from)
+    print(f"{model.__class__.__name__ = }")
+    if not use_peft:
+        return model, tokenizer
+    print(json.dumps(peft_kwargs))
+    config_class = getattr(peft, peft_class)
+    print(f"{config_class = }")
+    peft_config = config_class(
+        inference_mode=False,
+        **peft_kwargs,
+    )
+    model = WrappedPeftModel(model, peft_config)
+    print(print_trainable_parameters(model))
+    return model, tokenizer
+
+
+def build_trainer(
+        model,
+        tokenizer: PreTrainedTokenizerBase,
+        learning_rate: float,
+        report_to: List[str],
+        output_dir: str,
+        train_dataset,
+        eval_dataset,
+        data_collator,
+        metric_for_best_model: str = "map3",
+        greater_is_better: bool = True,
+        per_device_train_batch_size: int = 1,
+        per_device_eval_batch_size: int = 2,
+        early_stopping_patience: int = 4,
+        warmup_epochs: int = 1,
+        total_epochs: int = 20,
+        compute_metrics: Optional[Callable] = compute_map3_hf,
+):
+    warmup_ratio = warmup_epochs / total_epochs
+    training_args = TrainingArguments(
+        lr_scheduler_type="cosine",
+        metric_for_best_model=metric_for_best_model,
+        greater_is_better=greater_is_better,
+        warmup_ratio=warmup_ratio,
+        learning_rate=learning_rate,
+        per_device_train_batch_size=per_device_train_batch_size,
+        per_device_eval_batch_size=per_device_eval_batch_size,
+        load_best_model_at_end=True,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        num_train_epochs=total_epochs,
+        save_total_limit=2,
+        report_to=report_to,
+        output_dir=output_dir,
+        remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
+        label_names=["labels"],  # for peft
+        # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
+        fp16=True,
+        ddp_find_unused_parameters=False,
+        # optim=transformers.training_args.OptimizerNames.ADAMW_BNB,
+        # gradient_checkpointing=True,
+        # gradient_accumulation_steps=4,
+    )
+    return Trainer(
+        model=model,
+        args=training_args,
+        tokenizer=tokenizer,
+        data_collator=data_collator,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        compute_metrics=compute_metrics,
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=early_stopping_patience),
+        ],
+    )
+
+
+def load_causal_lm_dataset(
+        input_paths: List[Union[str, Path]],
+) -> pd.DataFrame:
+    dfs = []
+    for ip in input_paths:
+        df = pd.read_csv(ip)
+        df = drop_df_cols_for_dataset(df)
+        dfs.append(df)
+    catted_df = pd.concat(dfs, axis=0).reset_index()
+    return catted_df

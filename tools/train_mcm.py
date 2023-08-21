@@ -3,27 +3,23 @@ sys.path.append("/home/viktor/Documents/kaggle/kaggle_llm/src")
 from kaggle_llm.adapted_models import *
 from kaggle_llm.core import (
     DataCollatorForMultipleChoice,
+    DataCollatorForMultipleChoicePrompting,
     WORK_DIRS_PATH,
     ROOT_PATH,
-    compute_metrics,
+    compute_map3_hf,
+    build_peft_model,
     load_train_and_val_df,
     get_tokenize_dataset_from_df,
+    get_mcp_tokenize_dataset_from_df,
+    train_and_save_best_model_on_error,
 )
-from transformers import AutoModelForMultipleChoice, TrainingArguments, Trainer, AutoTokenizer, EarlyStoppingCallback
+from transformers import TrainingArguments, Trainer, EarlyStoppingCallback
 from loguru import logger
 from datetime import datetime
 import argparse
 import json
 import yaml
 import sys
-import os
-
-
-os.environ["MASTER_ADDR"] = "localhost"
-os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
-os.environ["RANK"] = "0"
-os.environ["LOCAL_RANK"] = "0"
-os.environ["WORLD_SIZE"] = "1"
 
 
 logger.add(sys.stdout, format="{time} {level} {message}", level="INFO")
@@ -56,9 +52,14 @@ def main(config_path: str,
     logger.info("loaded data")
 
     logger.info("initting models")
-    tokenizer = AutoTokenizer.from_pretrained(load_from)
-    # model = AutoModelForMultipleChoice.from_pretrained(load_from, load_in_8bit=True)
-    model = AutoModelForMultipleChoice.from_pretrained(load_from)
+    model, tokenizer = build_peft_model(
+        config["load_from"],
+        use_peft=config["use_peft"],
+        peft_class=config["peft_class"],
+        transformer_class="AutoModelForMultipleChoice",
+        use_8bit=config["use_8bit"],
+        **config["peft_kwargs"]
+    )
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")
@@ -66,6 +67,8 @@ def main(config_path: str,
     logger.info("initting dataset")
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
+    # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
 
     logger.info("initting trainer")
@@ -74,6 +77,7 @@ def main(config_path: str,
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
         metric_for_best_model="map3",
+        lr_scheduler_type="cosine",
         greater_is_better=True,
         warmup_ratio=warmup_ratio,
         learning_rate=float(config["lr"]),
@@ -96,23 +100,22 @@ def main(config_path: str,
         args=training_args,
         tokenizer=tokenizer,
         data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
+        # data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
-        compute_metrics=compute_metrics,
+        compute_metrics=compute_map3_hf,
         callbacks=[
             EarlyStoppingCallback(early_stopping_patience=4),
         ],
     )
     logger.info("initting trainer")
 
-    try:
-        trainer.train()
-    except KeyboardInterrupt:
-        print(f"training interrupted, moving on to save the model")
-    finally:
-        print(f"saving the model")
-        trainer.save_model(str(model_output_dir / "best_map3"))
-        print(f"model saved")
+    trainer.train()
+    # train_and_save_best_model_on_error(
+    #     trainer,
+    #     model_output_dir,
+    #     "best_map3_peft" if config["use_peft"] else "best_map3",
+    # )
 
 
 if __name__ == "__main__":

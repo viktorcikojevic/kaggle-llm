@@ -299,4 +299,4 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
         )
 
 
-AutoModelForMultipleChoice.register(DebertaV2Config, DebertaV2ForMultipleChoice2, exist_ok=True)
+# AutoModelForMultipleChoice.register(DebertaV2Config, DebertaV2ForMultipleChoice2)

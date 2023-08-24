@@ -214,6 +214,7 @@ def load_train_and_val_df(
     val_dfs = []
     for ip in input_paths:
         df = pd.read_csv(ip)
+        df = df.fillna("None") # Weird bug: when loading "None" string, it becomes NaN in the pandas df
         df = drop_df_cols_for_dataset(df)
         train_idx, val_idx = list(kf.split(df))[i_fold]
         train_df = df.loc[train_idx, :]
@@ -237,6 +238,8 @@ def load_train_and_val_df(
     dbg_val_df = val_df.copy()
     dbg_val_df["prompt_wc"] = dbg_val_df["prompt"].apply(count_words)
     for c in choices:
+        # convert to str
+        dbg_val_df[c] = dbg_val_df[c].astype(str)
         dbg_val_df[f"{c}_wc"] = dbg_val_df[c].apply(count_words)
     dbg_val_df["choice_wc"] = dbg_val_df[[f"{c}_wc" for c in choices]].max(axis=1)
     dbg_val_df["all_wc"] = dbg_val_df["prompt_wc"] + dbg_val_df["choice_wc"]

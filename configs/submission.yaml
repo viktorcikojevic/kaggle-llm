@@ -1,2 +1,2 @@
 models:
-  - "deberta-v3-large-notebook-weights-2023-08-13-00-54-17/best_map3"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/deberta-v3-large-on-raw_questions_wiki_sci_1-eval:kaggle-all-folds-grad-accum-16/deberta-v3-large-2023-08-24-14-33-06/checkpoint-3592"

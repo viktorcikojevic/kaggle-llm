@@ -13,6 +13,7 @@ from kaggle_llm.core import (
     get_tokenize_dataset_from_df,
     get_mcp_tokenize_dataset_from_df,
     train_and_save_best_model_on_error,
+    add_context
 )
 from transformers import TrainingArguments, Trainer, EarlyStoppingCallback
 from loguru import logger
@@ -70,11 +71,20 @@ def main(config_path: str,
         )  
         
         
-        
+    
     print("train_df:")
     print(train_df.iloc[0])
     print("val_df:")
     print(val_df.iloc[0])
+    if "add_context" in config and config["add_context"]:
+        train_df = add_context(train_df)
+        val_df = add_context(val_df)
+
+        print(f"New train_df size: {len(train_df)}")
+        print(f"New val_df size: {len(val_df)}")
+    
+        print(train_df.sample(1)['new_prompt'].values[0])
+        
     
     model_name = load_from.split("/")[-1]
     print("model_name:", model_name)
@@ -124,7 +134,7 @@ def main(config_path: str,
         save_strategy="epoch",
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,
-        save_total_limit=2,
+        save_total_limit=config["save_total_limit"],
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
         # fp16=True,

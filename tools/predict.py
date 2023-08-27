@@ -11,6 +11,7 @@ from kaggle_llm.core import (
     get_mcp_tokenize_dataset_from_df,
     drop_df_cols_for_dataset,
     WrappedPeftModel,
+    add_context
 )
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer, TrainingArguments
 from peft import PeftModel
@@ -39,6 +40,9 @@ def main(
     models = submission_config["models"]
     df = pd.read_csv(input_df_path)
     df = drop_df_cols_for_dataset(df)
+    
+    if "add_context" in submission_config and submission_config["add_context"]:
+        df = add_context(df)
 
     for i, load_from in enumerate(models):
         print(f"initting models [{i}]")

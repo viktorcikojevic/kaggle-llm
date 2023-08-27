@@ -4,6 +4,9 @@
 
 
 
+- 2023-08-27, Viktor: performed Deberta experiments using "teacher" schema, where the model sees all possible answers. Check the report [on wanbd here](https://api.wandb.ai/links/viktor-cikojevic/6rax1t92). My conclusions:
+    - Local CV scores the same as before, meaning that this training scheme doesn't really help.
+
 - 2023-08-24, Viktor: performed bunch of Deberta experiments [on wanbd here](https://wandb.ai/viktor-cikojevic/huggingface/reports/Untitled-Report--Vmlldzo1MjIyNzc3). My conclusions:
 
     - gradient accumulation works pretty well in these experiments!

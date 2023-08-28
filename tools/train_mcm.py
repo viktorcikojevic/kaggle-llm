@@ -55,7 +55,7 @@ def main(config_path: str,
         
         # Load validation data 
         train_df_2, val_df_2 = load_train_and_val_df(
-            input_paths=[config["eval_on"]],
+            input_paths=config["eval_on"],
             i_fold=config["fold"]["num"] if "fold" in config else 0,
             total_fold=config["fold"]["of"] if "fold" in config else 10,
         )
@@ -85,6 +85,13 @@ def main(config_path: str,
     
         print(train_df.sample(1)['new_prompt'].values[0])
         
+    print(f"[INFO] train df size is {len(train_df)}")
+    print(f"[INFO] val df size is {len(val_df)}")
+    
+    if "train_size" in config:
+        train_df = train_df.sample(config["train_size"], replace=False).reset_index(drop=True)
+        print(f"[INFO] Resampled df. New train df size is {len(train_df)}")
+
     
     model_name = load_from.split("/")[-1]
     print("model_name:", model_name)
@@ -134,7 +141,7 @@ def main(config_path: str,
         save_strategy="epoch",
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,
-        save_total_limit=config["save_total_limit"],
+        save_total_limit=config["save_total_limit"] if "save_total_limit" in config else 10,
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
         # fp16=True,

@@ -1,0 +1,26 @@
+raw_inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
+
+inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_1-splitted-w-wiki-context/more_questions_raw_questions_wiki_sci_1_train.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_1-splitted-w-wiki-context/more_questions_raw_questions_wiki_sci_1_test.csv"
+
+load_from: "microsoft/deberta-v3-large"
+
+report_to: ["wandb"]
+lr: 2e-6
+use_peft: False
+peft_class: "AdaLoraConfig"
+use_8bit: False
+gradient_accumulation_steps: 128
+total_epochs: 50
+early_stopping_patience: 10
+peft_lr: 5e-6
+eval_on: 
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam-test-context-splitted-w-wiki-context/train_train.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam-test-context-splitted-w-wiki-context/train_test.csv"
+eval_all_folds: True
+save_total_limit: 10
+# fold:
+#   num: 0
+#   of: 10

@@ -38,15 +38,17 @@ def main(
 
     print(json.dumps(submission_config, indent=4))
     models = submission_config["models"]
+    configs = submission_config["configs"]
     df = pd.read_csv(input_df_path)
     df = drop_df_cols_for_dataset(df)
     
     if "add_context" in submission_config and submission_config["add_context"]:
         df = add_context(df)
 
-    for i, load_from in enumerate(models):
+    for i, (load_from, config_file) in enumerate(zip(models, configs)):
         print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
+        abs_config = WORK_DIRS_PATH / config_file
         is_peft = "peft" in abs_load_from.parent.name
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
         if is_peft:
@@ -70,20 +72,27 @@ def main(
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")
-        # tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
-        tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
+        if config_file['tokenization'] == 'get_tokenize_dataset_from_df':
+            tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
+        elif config_file['tokenization'] == 'get_mcp_tokenize_dataset_from_df':
+            tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
         training_args = TrainingArguments(
             per_device_eval_batch_size=1,
             output_dir="/tmp/kaggle_llm_pred",
             **kwargs,
             fp16=True,
         )
+        
+        if config_file['data_collator'] == "DataCollatorForMultipleChoice":
+            data_collator = DataCollatorForMultipleChoice(tokenizer=tokenizer)
+        elif config_file['data_collator'] == "DataCollatorForMultipleChoicePrompting":
+            data_collator = DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer)
+        
         trainer = Trainer(
             model=model.eval(),
             args=training_args,
             tokenizer=tokenizer,
-            # data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
-            data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
+            data_collator=data_collator,
             train_dataset=None,
         )
         print(f"initted tokenizer and trainer [{i}]")

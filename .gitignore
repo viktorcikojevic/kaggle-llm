@@ -11,9 +11,10 @@ deploy_build/
 IGNORE_ME*
 site-packages/
 checkpoint-*/
-preds/
+# preds/
 *.csv
 wandb/
 model-weights/llama2-weights/llama2/llama*
 model-weights/llama2-weights/llama2/Code*/
 work_dirs/kaggle-dataset-deberta-v3-large/deberta-v3-large-2023-08-08-10-21-10
+notebooks/models/*

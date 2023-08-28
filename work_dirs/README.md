@@ -10,7 +10,7 @@
 - [wiki sci 1 with context](https://wandb.ai/viktor-cikojevic/huggingface/reports/Untitled-Report--Vmlldzo1MjUzODM3/edit?firstReport&runsetFilter)  reaches local CV about 0.68. Maybe this is because too much context is given. 
 - I've analyzed the dependence of local CV vs the number of training data, using deberta and wiki-sci-1 (a dataset I created with gpt-3.5 and scientific wiki). I get the practically same results for 1k and the whole dataset.
 ![Alt text](assets/image-evolution.png)
-- I've analyzed the dependence of local CV vs the number of training data, using deberta and wiki-sci-1 (a dataset I created with gpt-3.5 and scientific wiki). I get the practically same results for 1k and the whole dataset.
+
 
 
 ## 2023-08-27

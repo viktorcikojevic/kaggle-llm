@@ -1,10 +1,9 @@
 models:
-  - "deberta-v3-large-on-raw_questions_wiki_sci_1-eval-kaggle-all-folds-grad-accum-16/deberta-v3-large-2023-08-24-14-33-06/checkpoint-3592"
+  - "deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128/deberta-v3-large-2023-08-27-16-12-06/checkpoint-1738"
 
 
 configs:
-  - "deberta-v3-large-on-raw_questions_wiki_sci_1-eval-kaggle-all-folds-grad-accum-16/config"
-
+  - "deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128/configs"
 
 
 use_peft: False

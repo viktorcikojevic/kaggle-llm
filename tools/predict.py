@@ -72,9 +72,10 @@ def main(
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")
-        if config_file['tokenization'] == 'get_tokenize_dataset_from_df':
+        print(submission_config)
+        if submission_config['tokenization'] == 'get_tokenize_dataset_from_df':
             tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
-        elif config_file['tokenization'] == 'get_mcp_tokenize_dataset_from_df':
+        elif submission_config['tokenization'] == 'get_mcp_tokenize_dataset_from_df':
             tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
         training_args = TrainingArguments(
             per_device_eval_batch_size=1,
@@ -83,9 +84,9 @@ def main(
             fp16=True,
         )
         
-        if config_file['data_collator'] == "DataCollatorForMultipleChoice":
+        if submission_config['data_collator'] == "DataCollatorForMultipleChoice":
             data_collator = DataCollatorForMultipleChoice(tokenizer=tokenizer)
-        elif config_file['data_collator'] == "DataCollatorForMultipleChoicePrompting":
+        elif submission_config['data_collator'] == "DataCollatorForMultipleChoicePrompting":
             data_collator = DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer)
         
         trainer = Trainer(

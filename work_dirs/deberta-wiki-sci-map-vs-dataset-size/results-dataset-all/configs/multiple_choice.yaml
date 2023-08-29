@@ -19,7 +19,6 @@ peft_lr: 5e-6
 eval_on: 
   - "/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv"
 eval_all_folds: True
-train_size: 3000
 # fold:
 #   num: 0
 #   of: 10

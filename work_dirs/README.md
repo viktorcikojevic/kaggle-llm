@@ -1,9 +1,15 @@
 
 # Submissions
 
-- [deberta-v3-large-on-raw_questions_wiki_sci_1-eval-kaggle-all-folds-grad-accum-16](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141219820) submission, publice score: 0.713. Local CV was about 0.77
-- [deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141282948) submission, publice score: 0.729. Local CV was about 0.84
+These are actually bad submissions! These were trained on Kaggle data!
 
+- [deberta-v3-large-on-raw_questions_wiki_sci_1-eval-kaggle-all-folds-grad-accum-16](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141219820) submission, publice score: 0.713. Local CV was about 0.77. Training data: Kaggle data. Here I made the mistake, I thought that I was training on wiki_sci data, but I was actually training on Kaggle data.
+- [deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141282948) submission, publice score: 0.729. Local CV was about 0.84. Train data: Kaggle + 15k dataset. Here I made the mistake, I thought that I was training on wiki_sci data, but I was actually training on Kaggle data.
+- [deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141282948) submission, publice score: 0.729. Local CV was about 0.84. Train data: Kaggle + 15k dataset. Here I made the mistake, I thought that I was training on wiki_sci data, but I was actually training on Kaggle data.
+
+
+- [deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128-ACTUAL](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141354264): public score 0.738, local score 0.84. Train data: wiki-sci-1 + 15k dataset.
+- [deberta-wiki-sci-map-vs-dataset-size/results-dataset-all](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141330398): public score 0.738, local score 0.84. Train data: only the wiki-sci-1 dataset.
 
 
 # Experiment Log
@@ -20,7 +26,8 @@
 
 <!-- ![Alt text](assets/image-evolution.png) -->
 
-<img src="assets/image-evolution.png" alt="drawing" width="500"/>
+<img src="assets/W&B Chart 29_08_2023, 14_22_34.png" alt="drawing" width="500"/>
+<img src="assets/W&B Chart 29_08_2023, 14_22_34-2.png" alt="drawing" width="500"/>
 
 
 ## 2023-08-27
@@ -33,12 +40,6 @@
 <img src="assets/image-wiki-sci.png" alt="drawing" width="300"/>
 
 - Viktor: performed Deberta experiments using "teacher" schema, where the model sees all possible answers. Check the report [on wanbd here](https://api.wandb.ai/links/viktor-cikojevic/6rax1t92). My conclusion is that since the local CV scores the same as before, this training scheme doesn't really help.
-
-- Training with wiki-sci-1 dataset gives worse local CV results than. Red line: wiki-sci-1, purple line: wiki-sci-1 + 15k dataset, orange line: 15k dataset. You can see that local CV is boosted when I use 15k dataset. Submission: [deberta-v3-data-mix-1-eval-kaggle-all-folds-grad-accum-128](https://www.kaggle.com/code/viktorcikojevic/kaggle-llm?scriptVersionId=141282948) submission, publice score: 0.729. Local CV was about 0.84
-
-<!-- ![Alt text](assets/image-wiki-sci-vs-mixes.png){ width: 100px; } -->
-
-<img src="assets/image-wiki-sci-vs-mixes.png" alt="drawing" width="500"/>
 
 
 

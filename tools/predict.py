@@ -27,6 +27,7 @@ def main(
         input_df_path: str,
         output_dir: str,
         base_models_dir: str = "",
+        device: str = "cuda",
 ):
     input_df_path = Path(input_df_path)
     assert input_df_path.is_file(), f"{input_df_path} not found"
@@ -81,7 +82,7 @@ def main(
             per_device_eval_batch_size=1,
             output_dir="/tmp/kaggle_llm_pred",
             **kwargs,
-            fp16=True,
+            fp16=True if device == "cuda" else False,
         )
         
         if submission_config['data_collator'] == "DataCollatorForMultipleChoice":
@@ -118,5 +119,6 @@ if __name__ == "__main__":
     parser.add_argument("df_path")
     parser.add_argument("--output-dir", default=f"{str(ROOT_PATH)}/preds")
     parser.add_argument("--base-models-dir", default="")
+    parser.add_argument("--device", default="cuda", type=str, help="cuda or cpu", required=False)
     args, _ = parser.parse_known_args()
-    main(args.df_path, args.output_dir, args.base_models_dir)
+    main(args.df_path, args.output_dir, args.base_models_dir, args.device)

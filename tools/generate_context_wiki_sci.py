@@ -6,7 +6,7 @@ from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 import faiss
 import argparse
-
+import gc
 
 def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_context_len):
     
@@ -37,11 +37,16 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     parquet_files = [os.path.join(wiki_sci_parquets, f) for f in os.listdir(wiki_sci_parquets) if f.endswith('.parquet')]
     wiki_sci_df = pd.read_parquet(parquet_files[0])
 
+    ##
+    
+    
     sentence_embeddings = np.stack(wiki_sci_df['sentences_embd'].values).astype('float32')
     sentence_index = faiss.IndexFlatIP(sentence_embeddings.shape[1])
     sentence_index.add(sentence_embeddings)
 
     sentences = list(wiki_sci_df['sentences'].values)
+    
+    del wiki_sci_df, sentence_embeddings
 
     print("Creating faiss embedding index for wiki sentences ... ")
     for file_path in tqdm(parquet_files[1:]):
@@ -50,10 +55,51 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         sentence_embeddings = np.stack(df_tmp['sentences_embd'].values).astype('float32')
         sentence_index.add(sentence_embeddings)
 
-        sentences.extend(list(df_tmp['sentences'].values))
+        # sentences.extend(list(df_tmp['sentences'].values))
         
-        del df_tmp
+        del sentence_embeddings, df_tmp
+        gc.collect()
         
+        
+    # # get the number of clusters
+    # nlist = sentence_index.ntotal
+    # print(f"Number of clusters: {nlist}")
+    # # get the number of subquantizers   
+    # m = sentence_index.nprobe
+    # print(f"Number of subquantizers: {m}")
+    # return
+        
+        
+    # d = 1024  # dimension
+    # nlist = 1000  # number of clusters
+    # m = 16  # number of subquantizers
+
+    # quantizer = faiss.IndexFlatL2(d)
+    # sentence_index = faiss.IndexIVFPQ(quantizer, d, nlist, m, 8)
+    # # 8 specifies that each sub-vector is encoded as 8 bits
+
+    # sentence_embeddings = np.stack(wiki_sci_df['sentences_embd'].values).astype('float32')
+    # sentence_index.train(sentence_embeddings)
+    # sentence_index.add(sentence_embeddings)
+
+    # sentences = list(wiki_sci_df['sentences'].values)
+
+    # del wiki_sci_df, sentence_embeddings
+
+    # print("Creating faiss embedding index for wiki sentences ... ")
+    # for file_path in tqdm(parquet_files[1:]):
+    #     df_tmp = pd.read_parquet(file_path)
+
+    #     sentence_embeddings = np.stack(df_tmp['sentences_embd'].values).astype('float32')
+    #     sentence_index.train(sentence_embeddings)
+    #     sentence_index.add(sentence_embeddings)
+
+    #     sentences.extend(list(df_tmp['sentences'].values))
+
+    #     del sentence_embeddings, df_tmp
+    #     gc.collect()
+
+
 
     # iterate over csv and find top k closest sentences
     # for loop, connect the sentences into one big string, put into csv['context']

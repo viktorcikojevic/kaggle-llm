@@ -46,27 +46,23 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     
     # There are 30 parquet files
     print("Finding sentences for prompts ... ")
-    for pfile_indx, parquet_file in tqdm(enumerate(parquet_files[:2]), total=len(parquet_files)):
+    for pfile_indx, parquet_file in tqdm(enumerate(parquet_files), total=len(parquet_files)):
         
         # Create dataframe for a given parquet file
         wiki_sci_df = pd.read_parquet(parquet_file)
         sentence_embeddings = np.stack(wiki_sci_df['sentences_embd'].values).astype('float32')
         
+        # Create a faiss index for the sentence embeddings
         d = sentence_embeddings.shape[1]  # dimensionality of the data
-        n_clusters = 1000  # number of clusters
-        niter = 30  # number of iterations
-
-        print(f"Training kmeans with d={d}, k={n_clusters}, niter={niter}")
-        kmeans = faiss.Kmeans(d, n_clusters, niter=niter, verbose=False)
-        kmeans.index = faiss.IndexFlatIP(d)
-        kmeans.train(sentence_embeddings)
+        index = faiss.IndexFlatIP(d)
+        index.add(sentence_embeddings)
         
         final_sentences = []
         final_distances = []
         
         for indx, embd_prompt in enumerate(csv['embd_prompt']):
             
-            distances, indices = kmeans.index.search(embd_prompt.reshape(1, -1), len(parquet_files) // k)
+            distances, indices = index.search(embd_prompt.reshape(1, -1), len(parquet_files) // k)
             sentences = [wiki_sci_df['sentences'].values[i] for i in indices[0]]
             
             final_sentences.append(sentences)
@@ -84,7 +80,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         
         
         
-        del wiki_sci_df, sentence_embeddings, distances, indices, kmeans
+        del wiki_sci_df, sentence_embeddings, distances, indices, index
         gc.collect()
         
         

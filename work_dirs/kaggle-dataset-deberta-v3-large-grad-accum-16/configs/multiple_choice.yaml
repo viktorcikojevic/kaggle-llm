@@ -11,9 +11,9 @@ lr: 5e-6
 use_peft: False
 peft_class: "AdaLoraConfig"
 use_8bit: False
-gradient_accumulation_steps: 1
-early_stopping_patience: 100
-total_epochs: 40
+gradient_accumulation_steps: 16
+total_epochs: 100
+early_stopping_patience: 100000000000
 peft_lr: 5e-6
 fold:
   num: 0

@@ -15,6 +15,7 @@ import numpy as np
 import torch
 import json
 import os
+from tqdm import tqdm
 
 
 ROOT_PATH = Path(__file__).resolve().absolute().parent.parent.parent
@@ -214,6 +215,7 @@ def load_train_and_val_df(
     val_dfs = []
     for ip in input_paths:
         df = pd.read_csv(ip)
+        df = df.fillna("None") # Weird bug: when loading "None" string, it becomes NaN in the pandas df
         df = drop_df_cols_for_dataset(df)
         train_idx, val_idx = list(kf.split(df))[i_fold]
         train_df = df.loc[train_idx, :]
@@ -237,6 +239,8 @@ def load_train_and_val_df(
     dbg_val_df = val_df.copy()
     dbg_val_df["prompt_wc"] = dbg_val_df["prompt"].apply(count_words)
     for c in choices:
+        # convert to str
+        dbg_val_df[c] = dbg_val_df[c].astype(str)
         dbg_val_df[f"{c}_wc"] = dbg_val_df[c].apply(count_words)
     dbg_val_df["choice_wc"] = dbg_val_df[[f"{c}_wc" for c in choices]].max(axis=1)
     dbg_val_df["all_wc"] = dbg_val_df["prompt_wc"] + dbg_val_df["choice_wc"]
@@ -455,3 +459,51 @@ def load_causal_lm_dataset(
         dfs.append(df)
     catted_df = pd.concat(dfs, axis=0).reset_index()
     return catted_df
+
+
+
+def generate_new_prompt(prompt, analyze_option, options):
+    
+    new_prompt = f'''You are a university professor, renowned as an expert in your field. Your teaching style is known for providing comprehensive and lengthy explanations, ensuring that your students grasp the depths of the topic at hand.
+        
+        Context: A student of yours approaches you after class, presenting a query that's been puzzling her. She's received varied opinions from her peers and is seeking clarity.
+        
+        Student's Question: {prompt}
+        
+        She think that the answer is: {analyze_option}.
+        
+        She's been told by her colleagues that potential answers could be:
+        Option 1: {options[0]}.
+        Option 2: {options[1]}.
+        Option 3: {options[2]}.
+        Option 4: {options[3]}.
+
+        Kindly delve into the problem, elucidating the validity of her answer. Your aim is to tell her whether the answer is correct or wrong at the end. Critically examine each option, helping her discern how "wrong" or "right" her answer is. Provide a step-by-step analysis.
+    '''
+    return new_prompt.replace("..", ".")
+
+def add_context(df):
+    
+    new_df = df.copy()
+
+    # append new_csv 4 times
+    for i in range(4):
+        new_df = pd.concat([new_df, df])
+        
+    print(f"New df length: {len(new_df)}")
+    new_df['analyze_answer'] = ["A", "B", "C", "D", "E"] * (len(new_df) // 5)
+    
+    print(f"Adding context ... ")
+    for i, row in tqdm(new_df.iterrows(), total=len(new_df)):
+        possible_options = ["A", "B", "C", "D", "E"]
+        
+        # remove the correct answer from the possible options
+        possible_options.remove(row['answer'])
+        
+        options = [row[option] for option in possible_options]
+        
+        analyze_option = row[row['answer']]
+        
+        new_df.at[i, 'new_prompt'] = generate_new_prompt(row['prompt'], analyze_option, options)    
+        
+    return new_df

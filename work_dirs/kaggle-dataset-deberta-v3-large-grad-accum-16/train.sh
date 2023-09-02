@@ -22,9 +22,9 @@ processed_test_file_dir=$repo_dir/data/kaggle-llm-science-exam-test-context
 test_file_path="$processed_test_file_dir/test.csv"
 
 # current directory, where the script is located, full path
-work_dir_path=$repo_dir/work_dirs/kaggle-dataset-deberta-v3-large
+work_dir_path=$repo_dir/work_dirs/kaggle-dataset-deberta-v3-large-grad-accum-16
 
 echo "Work dir:"  $work_dir_path
 
-python $repo_dir/tools/train_mcm.py $repo_dir/work_dirs/kaggle-dataset-deberta-v3-large/configs/multiple_choice.yaml --work-dir-path $work_dir_path
+python $repo_dir/tools/train_mcm.py $repo_dir/work_dirs/kaggle-dataset-deberta-v3-large-grad-accum-16/configs/multiple_choice.yaml --work-dir-path $work_dir_path
 

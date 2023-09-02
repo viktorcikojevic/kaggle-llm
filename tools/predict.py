@@ -11,6 +11,7 @@ from kaggle_llm.core import (
     get_mcp_tokenize_dataset_from_df,
     drop_df_cols_for_dataset,
     WrappedPeftModel,
+    add_context
 )
 from transformers import AutoModelForMultipleChoice, Trainer, AutoTokenizer, TrainingArguments
 from peft import PeftModel
@@ -26,6 +27,7 @@ def main(
         input_df_path: str,
         output_dir: str,
         base_models_dir: str = "",
+        device: str = "cuda",
 ):
     input_df_path = Path(input_df_path)
     assert input_df_path.is_file(), f"{input_df_path} not found"
@@ -37,12 +39,17 @@ def main(
 
     print(json.dumps(submission_config, indent=4))
     models = submission_config["models"]
+    configs = submission_config["configs"]
     df = pd.read_csv(input_df_path)
     df = drop_df_cols_for_dataset(df)
+    
+    if "add_context" in submission_config and submission_config["add_context"]:
+        df = add_context(df)
 
-    for i, load_from in enumerate(models):
+    for i, (load_from, config_file) in enumerate(zip(models, configs)):
         print(f"initting models [{i}]")
         abs_load_from = WORK_DIRS_PATH / load_from
+        abs_config = WORK_DIRS_PATH / config_file
         is_peft = "peft" in abs_load_from.parent.name
         tokenizer = AutoTokenizer.from_pretrained(abs_load_from)
         if is_peft:
@@ -66,20 +73,28 @@ def main(
         print(f"initted models [{i}]")
 
         print(f"initting tokenizer and trainer [{i}]")
-        # tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
-        tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
+        print(submission_config)
+        if submission_config['tokenization'] == 'get_tokenize_dataset_from_df':
+            tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
+        elif submission_config['tokenization'] == 'get_mcp_tokenize_dataset_from_df':
+            tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
         training_args = TrainingArguments(
             per_device_eval_batch_size=1,
             output_dir="/tmp/kaggle_llm_pred",
             **kwargs,
-            fp16=True,
+            fp16=True if device == "cuda" else False,
         )
+        
+        if submission_config['data_collator'] == "DataCollatorForMultipleChoice":
+            data_collator = DataCollatorForMultipleChoice(tokenizer=tokenizer)
+        elif submission_config['data_collator'] == "DataCollatorForMultipleChoicePrompting":
+            data_collator = DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer)
+        
         trainer = Trainer(
             model=model.eval(),
             args=training_args,
             tokenizer=tokenizer,
-            # data_collator=DataCollatorForMultipleChoice(tokenizer=tokenizer),
-            data_collator=DataCollatorForMultipleChoicePrompting(tokenizer=tokenizer),
+            data_collator=data_collator,
             train_dataset=None,
         )
         print(f"initted tokenizer and trainer [{i}]")
@@ -104,5 +119,6 @@ if __name__ == "__main__":
     parser.add_argument("df_path")
     parser.add_argument("--output-dir", default=f"{str(ROOT_PATH)}/preds")
     parser.add_argument("--base-models-dir", default="")
+    parser.add_argument("--device", default="cuda", type=str, help="cuda or cpu", required=False)
     args, _ = parser.parse_known_args()
-    main(args.df_path, args.output_dir, args.base_models_dir)
+    main(args.df_path, args.output_dir, args.base_models_dir, args.device)

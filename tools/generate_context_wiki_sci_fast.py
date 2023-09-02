@@ -8,8 +8,10 @@ import faiss
 import argparse
 import gc
 from sklearn.metrics.pairwise import cosine_similarity
+from memory_profiler import profile
 
 
+@profile
 def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_context_len, faiss_index=None):
     
     
@@ -102,7 +104,8 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     distances_all = np.reshape(distances_all, (n_rows, n_sentences * n_parquets))
     sentences_all = np.reshape(sentences_all, (n_rows, n_sentences * n_parquets))
 
-    
+    csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E'] + ['answer'] if 'answer' in csv.columns else []]
+    gc.collect()
     
     # take the top k sentences
     context_sentences = []
@@ -124,7 +127,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     csv['prompt'] = csv[['context', 'prompt']].apply(lambda x: 'Context: '+ x['context'] + " ###  " + x['prompt'], axis=1)
     
     # take only prompt, A, B, C, D, E columns
-    csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E']]
+    csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E'] + ['answer'] if 'answer' in csv.columns else []]
     
     # save csv to out-dir
     out_name = out_name.replace(".csv", "")

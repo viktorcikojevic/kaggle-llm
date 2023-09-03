@@ -21,9 +21,9 @@ import pandas as pd
 import argparse
 import yaml
 import json
-# from memory_profiler import profile
+from memory_profiler import profile
 
-# @profile
+@profile
 def main(
         input_df_path: str,
         output_dir: str,

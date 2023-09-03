@@ -64,7 +64,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         
         for indx, embd_prompt in enumerate(csv['embd_prompt']):
             
-            distances, indices = index.search(embd_prompt.reshape(1, -1), len(parquet_files) // k)
+            distances, indices = index.search(embd_prompt.reshape(1, -1), max(k // len(parquet_files), 1))
             sentences = [wiki_sci_df['sentences'].values[i] for i in indices[0]]
             
             final_sentences.append(sentences)
@@ -77,6 +77,9 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         
         csv[column_name_sentences] = final_sentences
         csv[column_name_distances] = final_distances
+        
+        # Print size of csv in gigabytes
+        # print(f"Size of csv in gigabytes: {sys.getsizeof(csv) / 1e9}")
         
         
         
@@ -104,7 +107,10 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     distances_all = np.reshape(distances_all, (n_rows, n_sentences * n_parquets))
     sentences_all = np.reshape(sentences_all, (n_rows, n_sentences * n_parquets))
 
-    csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E'] + ['answer'] if 'answer' in csv.columns else []]
+
+
+
+    csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E', 'answer'] if 'answer' in csv.columns else ['id', 'prompt', 'A', 'B', 'C', 'D', 'E']]
     gc.collect()
     
     # take the top k sentences
@@ -123,11 +129,15 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         context = context[:max_context_len]  # truncate context to max_context_len
         context_sentences.append(context)
     
-    csv['context'] = context_sentences
-    csv['prompt'] = csv[['context', 'prompt']].apply(lambda x: 'Context: '+ x['context'] + " ###  " + x['prompt'], axis=1)
-    
     # take only prompt, A, B, C, D, E columns
     csv = csv[['id', 'prompt', 'A', 'B', 'C', 'D', 'E'] + ['answer'] if 'answer' in csv.columns else []]
+    
+    print("csv.columns: ", csv.columns)
+    csv['context'] = context_sentences
+    csv['prompt_len'] = csv['prompt'].apply(lambda x: len(x))
+    three_d = " ###  "
+    csv['prompt'] = csv[['context', 'prompt', 'prompt_len']].apply(lambda x: 'Context: '+ x['context'][:max_context_len-x['prompt_len']-len(three_d)] + three_d + x['prompt'], axis=1)
+    
     
     # save csv to out-dir
     out_name = out_name.replace(".csv", "")

@@ -168,7 +168,7 @@ clusters[:10], clusters.shape
 
 
 num_questions_per_round = 10
-num_questions_per_cluster = 8
+num_questions_per_cluster = 2
 
 
 # In[37]:
@@ -182,7 +182,7 @@ def generate_questions_for_cluster(cluster, wiki_sci_df_cluster_indices):
         
         
         randint = np.random.randint(0, 1000000)
-        out_path = f"{out_dir}/cluster-{cluster}-round-{cluster_question_idx}-{randint}-3.txt"
+        out_path = f"{out_dir}/cluster-{cluster}-round-{cluster_question_idx}-{randint}-sumo.txt"
         
         
         # take a random page and text from wiki_sci_df_cluster
@@ -306,7 +306,7 @@ def generate_questions(cluster):
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-n_jobs = 2
+n_jobs = 3
 
 wiki_sci_df.index = np.arange(len(wiki_sci_df))
 

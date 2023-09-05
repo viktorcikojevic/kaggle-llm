@@ -119,6 +119,17 @@ def main(config_path: str,
     logger.info("initted models")
  
     logger.info("initting dataset")
+    
+    if "max_context_size" in config:
+        max_context_size = config["max_context_size"]
+        def limit_context(text, max_context_size):
+            x = text.split(" ### ")
+            # remove empty strings
+            x = [x for x in x if x]
+            x = x[0][:max_context_size - 5 - len(x[1])] + " ### " + x[1]
+            return x
+        train_df['prompt'] = train_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
+        val_df['prompt'] = val_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
     # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)

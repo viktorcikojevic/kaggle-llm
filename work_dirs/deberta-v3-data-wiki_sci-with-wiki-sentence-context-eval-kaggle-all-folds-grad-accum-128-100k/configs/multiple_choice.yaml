@@ -1,0 +1,25 @@
+inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/train_1.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/train_2.csv"
+  
+
+load_from: "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/deberta-v3-data-wiki_sci-with-wiki-sentence-context-eval-kaggle-all-folds-grad-accum-128-60k/deberta-v3-large-2023-09-05-07-35-55/checkpoint-2812" # "microsoft/deberta-v3-large" # 
+
+report_to: ["wandb"]
+lr: 2e-6
+use_peft: False
+peft_class: "AdaLoraConfig"
+use_8bit: False
+gradient_accumulation_steps: 128
+max_context_size: 750
+total_epochs: 60
+early_stopping_patience: 10
+peft_lr: 5e-6
+eval_on: 
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/test_1.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/test_2.csv"
+eval_all_folds: True
+save_total_limit: 10
+# fold:
+#   num: 0
+#   of: 10

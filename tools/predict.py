@@ -99,6 +99,35 @@ def main(
             
             df['prompt'] = df['prompt'].apply(lambda x: get_prompt(x))
         
+            # df['context_sentences'] = df['context'].apply(lambda x: x.split(". "))
+            # df = df.explode('context_sentences').reset_index(drop=True)
+            # df['context'] = df['context_sentences']
+            
+            
+            # give answer as context 
+            # df['context'] = df.apply(lambda x: x[x['answer']], axis=1)
+            
+            # df['context'] = df.apply(lambda x: x['context'][:900] + " " + x[x['answer']], axis=1)
+            
+            # df_1 = df.copy()
+            # df_1['context'] = df_1.apply(lambda x: x['A'], axis=1)
+            
+            # df_2 = df.copy()
+            # df_2['context'] = df_2.apply(lambda x: x['B'], axis=1)
+            
+            # df_3 = df.copy()
+            # df_3['context'] = df_3.apply(lambda x: x['C'], axis=1)
+            
+            # df_4 = df.copy()
+            # df_4['context'] = df_4.apply(lambda x: x['D'], axis=1)
+            
+            # df_5 = df.copy()
+            # df_5['context'] = df_5.apply(lambda x: x['E'], axis=1)
+            
+            # df = pd.concat([df_1, df_2, df_3, df_4, df_5]).reset_index(drop=True)
+            
+            
+        
         
         if submission_config['tokenization'] == 'get_tokenize_dataset_from_df':
             tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer, preprocess_type, max_input)

@@ -27,29 +27,29 @@ echo "test_file_2: $test_file_2"
 
 
 
-# python $repo_dir/tools/generate_context_wiki_sci_fast.py \
-#     --input-csv $test_file_1     \
-#     --model-dir $repo_dir/data/huggingface_hub_models/bge-large-en   \
-#     --out-dir /home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_2-splitted-wiki-sentc-context     \
-#      --out-dir $repo_dir/data/wiki-sci-2-w-sentence-context \
-#     --out-name "test_1"      \
-#     -k 40     \
-#     --max-context-len 2000     \
-#     --wiki-sci-parquets /home/viktor/Documents/kaggle/kaggle_llm/data/wikipedia_pages2_w_embd_sentences \
-#     --njobs 4
+python $repo_dir/tools/generate_context_wiki_sci_fast.py \
+    --input-csv $test_file_1     \
+    --model-dir $repo_dir/data/huggingface_hub_models/bge-large-en   \
+    --out-dir /home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_2-splitted-wiki-sentc-context     \
+     --out-dir $repo_dir/data/wiki-sci-2-w-sentence-context \
+    --out-name "test_1"      \
+    -k 100     \
+    --max-context-len 10000     \
+    --wiki-sci-parquets /home/viktor/Documents/kaggle/kaggle_llm/data/wikipedia_pages2_w_embd_sentences \
+    --njobs 4
 
 
 
-# python $repo_dir/tools/generate_context_wiki_sci_fast.py \
-#     --input-csv $test_file_2     \
-#     --model-dir $repo_dir/data/huggingface_hub_models/bge-large-en   \
-#     --out-dir /home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_2-splitted-wiki-sentc-context     \
-#      --out-dir $repo_dir/data/wiki-sci-2-w-sentence-context \
-#     --out-name "test_2"      \
-#     -k 40     \
-#     --max-context-len 2000     \
-#     --wiki-sci-parquets /home/viktor/Documents/kaggle/kaggle_llm/data/wikipedia_pages2_w_embd_sentences \
-#     --njobs 4
+python $repo_dir/tools/generate_context_wiki_sci_fast.py \
+    --input-csv $test_file_2     \
+    --model-dir $repo_dir/data/huggingface_hub_models/bge-large-en   \
+    --out-dir /home/viktor/Documents/kaggle/kaggle_llm/data/raw_questions_wiki_sci_2-splitted-wiki-sentc-context     \
+     --out-dir $repo_dir/data/wiki-sci-2-w-sentence-context \
+    --out-name "test_2"      \
+    -k 100     \
+    --max-context-len 10000     \
+    --wiki-sci-parquets /home/viktor/Documents/kaggle/kaggle_llm/data/wikipedia_pages2_w_embd_sentences \
+    --njobs 4
 
 
 
@@ -84,5 +84,5 @@ echo "test_file_2: $test_file_2"
 
 
 
-python $repo_dir/tools/train_mcm.py configs/multiple_choice.yaml --work-dir-path ./
+# python $repo_dir/tools/train_mcm.py configs/multiple_choice.yaml --work-dir-path ./
 

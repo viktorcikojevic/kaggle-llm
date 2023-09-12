@@ -1,0 +1,4 @@
+0,None
+1,Not Relevant
+0,Relevant
+1,Not Relevant

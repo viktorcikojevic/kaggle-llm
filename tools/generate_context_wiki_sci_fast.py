@@ -78,7 +78,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
             
             for indx, embd_prompt in enumerate(csv_chunk['embd_prompt']):
                 
-                distances, indices = index.search(embd_prompt.reshape(1, -1),  1)
+                distances, indices = index.search(embd_prompt.reshape(1, -1),  max(1, k // len(parquet_files)))
                 sentences = [wiki_sci_df['sentences'].values[i] for i in indices[0]]
                 
                 final_sentences.append(sentences)

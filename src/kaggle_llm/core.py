@@ -90,26 +90,40 @@ class DataCollatorForMultipleChoicePrompting:
         return batch
 
 
-def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any]):
+def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any], preprocess_type: str, max_input: int):
     """
     The example is expected to be a dictionary with keys "prompt", "A", "B", "C", "D", "E", and "answer".
     """
-    # The AutoModelForMultipleChoice class expects a set of question/answer pairs,
-    # so we"ll copy our question 5 times before tokenizing
-    first_sentence = [example["prompt"]] * 5
-    second_sentence = [example[option] for option in options]
-    # Our tokenizer will turn our text into token IDs BERT can understand
-    tokenized_example = tokenizer(first_sentence, second_sentence, truncation=True)
+    assert preprocess_type in ["sumo", "deotte"], "preprocess_type must be either sumo or deotte"
+    if preprocess_type == "sumo":
+        # The AutoModelForMultipleChoice class expects a set of question/answer pairs,
+        # so we"ll copy our question 5 times before tokenizing
+        first_sentence = [example["prompt"]] * 5
+        second_sentence = [example[option] for option in options]
+        # Our tokenizer will turn our text into token IDs BERT can understand
+        tokenized_example = tokenizer(first_sentence, second_sentence, truncation=True)
 
-    # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
-    # print(f"{_max_length = }")
-    # if _max_length > 350:
-    #     print(example)
-    #     assert False, ":D"
+        # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
+        # print(f"{_max_length = }")
+        # if _max_length > 350:
+        #     print(example)
+        #     assert False, ":D"
 
-    if "answer" in example:
-        tokenized_example["label"] = option_to_index[example["answer"]]
-    return tokenized_example
+        if "answer" in example:
+            tokenized_example["label"] = option_to_index[example["answer"]]
+        return tokenized_example
+
+    if preprocess_type == "deotte":
+        first_sentence = [ "[CLS] " + example['context'] ] * 5
+        second_sentences = [" #### " + example['prompt'] + " [SEP] " + example[option] + " [SEP]" for option in 'ABCDE']
+        tokenized_example = tokenizer(first_sentence, second_sentences, truncation='only_first', 
+                                    max_length=max_input, add_special_tokens=False)        
+        if "answer" in example:
+            tokenized_example["label"] = option_to_index[example["answer"]]
+        
+        return tokenized_example
+        
+        
 
 
 @dataclass
@@ -249,11 +263,11 @@ def load_train_and_val_df(
     return train_df, val_df
 
 
-def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
+def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase, preprocess_type: str, max_input: int):
     dataset = Dataset.from_pandas(df)
     topic_cols = [c for c in df.columns if "topic" in c]
     return dataset.map(
-        lambda example: multiple_choice_preprocess(tokenizer, example),
+        lambda example: multiple_choice_preprocess(tokenizer, example, preprocess_type, max_input),
         remove_columns=(
             ["prompt", "A", "B", "C", "D", "E"]
             + (["answer"] if "answer" in df else [])
@@ -273,7 +287,8 @@ def get_mcp_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedToke
             + (["answer"] if "answer" in df else [])
             + topic_cols
             + (["index"] if "index" in df else [])
-        )
+        ),
+        nproc=4,
     )
 
 

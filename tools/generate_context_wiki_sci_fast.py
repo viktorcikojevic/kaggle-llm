@@ -51,7 +51,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     
     
     # Number of csv files
-    num_files = math.ceil(len(csv) / 100)
+    num_files = math.ceil(len(csv) / 20)
 
     # Chunk the csv
     csv_chunks = np.array_split(csv, num_files)
@@ -114,7 +114,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
         sentences_all = np.reshape(sentences_all, (n_rows, n_sentences * n_parquets))
 
 
-        csv_chunk = csv_chunk[['id', 'prompt', 'A', 'B', 'C', 'D', 'E', 'answer'] if 'answer' in csv_chunk.columns else ['id', 'prompt', 'A', 'B', 'C', 'D', 'E']]
+        csv_chunk = csv_chunk[['prompt', 'A', 'B', 'C', 'D', 'E', 'answer'] if 'answer' in csv_chunk.columns else ['prompt', 'A', 'B', 'C', 'D', 'E']]
         gc.collect()
         
         # take the top k sentences
@@ -134,6 +134,10 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
             context_sentences.append(context)
         
         csv_chunk['context'] = context_sentences
+        
+        
+        
+        
         csv_chunk['prompt_len'] = csv_chunk['prompt'].apply(lambda x: len(x))
         three_d = " ###  "
         csv_chunk['prompt'] = csv_chunk[['context', 'prompt', 'prompt_len']].apply(lambda x: 'Context: '+ x['context'][:max_context_len-x['prompt_len']-len(three_d)] + three_d + x['prompt'], axis=1)

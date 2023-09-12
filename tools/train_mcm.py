@@ -114,24 +114,89 @@ def main(config_path: str,
         use_8bit=config["use_8bit"],
         **config["peft_kwargs"] if "peft_kwargs" in config else {},
     )
+    
+    if 'freeze_embeddings' in config and config['freeze_embeddings'] and 'deberta' in config['load_from']:
+        print('Freezing embeddings.')
+        for param in model.deberta.embeddings.parameters():
+            param.requires_grad = False
+    if 'freeze_layers' in config and config['freeze_layers'] and 'deberta' in config['load_from']:
+        freeze_layers = config['freeze_layers']
+        print(f'Freezing first {freeze_layers} layers.')
+        for layer in model.deberta.encoder.layer[:freeze_layers]:
+            for param in layer.parameters():
+                param.requires_grad = False
+    
+    
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
     logger.info("initted models")
  
     logger.info("initting dataset")
     
+    if 'separate_prompt_and_context' in config and config['separate_prompt_and_context']:
+        def get_context(text):
+            x = text.split(" ### ")
+            # remove empty strings
+            x = [x for x in x if len(x) > 0]
+            
+            assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}, x={x}"
+            return x[0]
+        
+        
+        train_df['context'] = train_df['prompt'].apply(lambda x: get_context(x))
+        val_df['context'] = val_df['prompt'].apply(lambda x: get_context(x))
+        
+        def get_prompt(text):
+            x = text.split(" ### ")
+            # remove empty strings
+            x = [x for x in x if len(x) > 0]
+            assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}"
+            return x[1]
+        
+        train_df['prompt'] = train_df['prompt'].apply(lambda x: get_prompt(x))
+        val_df['prompt'] = val_df['prompt'].apply(lambda x: get_prompt(x))
+        
+    
     if "max_context_size" in config:
         max_context_size = config["max_context_size"]
         def limit_context(text, max_context_size):
             x = text.split(" ### ")
             # remove empty strings
-            x = [x for x in x if x]
+            x = [x for x in x if len(x) > 0]
+            assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}, x={x}"
             x = x[0][:max_context_size - 5 - len(x[1])] + " ### " + x[1]
             return x
         train_df['prompt'] = train_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
         val_df['prompt'] = val_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
-    train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer)
-    val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer)
+    
+    preprocess_type = 'sumo' if 'preprocess_type' not in config else config['preprocess_type']
+    print(f"preprocess_type: {preprocess_type}")
+    max_input = 512 if 'max_input' not in config else config['max_input']
+    
+    # Trim context length to reasonable size
+    train_df['context'] = train_df['context'].apply(lambda x: x[:12000])
+    val_df['context'] = val_df['context'].apply(lambda x: x[:12000])
+    
+    train_df['context_len'] = train_df['context'].apply(lambda x: len(x))
+    train_df['prompt_len'] = train_df['prompt'].apply(lambda x: len(x))
+    
+    val_df['context_len'] = val_df['context'].apply(lambda x: len(x))
+    val_df['prompt_len'] = val_df['prompt'].apply(lambda x: len(x))
+    
+    
+    
+    print("train_df['context_len'].min()", train_df['context_len'].min())
+    print("train_df['context_len'].max()", train_df['context_len'].max())
+    print("val_df['context_len'].min()", val_df['context_len'].min())
+    print("val_df['context_len'].max()", val_df['context_len'].max())
+    print("train_df['prompt_len'].min()", train_df['prompt_len'].min())
+    print("train_df['prompt_len'].max()", train_df['prompt_len'].max())
+    print("val_df['prompt_len'].min()", val_df['prompt_len'].min())
+    print("val_df['prompt_len'].max()", val_df['prompt_len'].max())
+    
+    
+    train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer, preprocess_type, max_input)
+    val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer, preprocess_type, max_input)
     # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
     # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
@@ -155,7 +220,7 @@ def main(config_path: str,
         save_total_limit=config["save_total_limit"] if "save_total_limit" in config else 10,
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
-        # fp16=True,
+        # fp16=False if 'use_8bit' in config and config['use_8bit'] else True,
         # gradient_checkpointing=True,
         gradient_accumulation_steps=config["gradient_accumulation_steps"],
         # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),

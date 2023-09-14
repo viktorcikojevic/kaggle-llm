@@ -10,4 +10,4 @@ use_8bit: True
 tokenization: "get_tokenize_dataset_from_df"
 data_collator: "DataCollatorForMultipleChoice"
 
-separate_prompt_and_context: True
+separate_prompt_and_context: False

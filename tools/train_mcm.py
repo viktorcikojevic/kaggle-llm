@@ -159,15 +159,11 @@ def main(config_path: str,
     
     if "max_context_size" in config:
         max_context_size = config["max_context_size"]
-        def limit_context(text, max_context_size):
-            x = text.split(" ### ")
-            # remove empty strings
-            x = [x for x in x if len(x) > 0]
-            assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}, x={x}"
-            x = x[0][:max_context_size - 5 - len(x[1])] + " ### " + x[1]
+        def limit_context(x, max_context_size):
+            x = x[:max_context_size]
             return x
-        train_df['prompt'] = train_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
-        val_df['prompt'] = val_df['prompt'].apply(lambda x: limit_context(x, max_context_size))
+        train_df['context'] = train_df['context'].apply(lambda x: limit_context(x, max_context_size))
+        val_df['context'] = val_df['context'].apply(lambda x: limit_context(x, max_context_size))
     
     preprocess_type = 'sumo' if 'preprocess_type' not in config else config['preprocess_type']
     print(f"preprocess_type: {preprocess_type}")

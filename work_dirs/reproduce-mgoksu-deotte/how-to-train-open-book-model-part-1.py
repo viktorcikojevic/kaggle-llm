@@ -28,7 +28,6 @@
 # [1]: https://www.kaggle.com/datasets/cdeotte/60k-data-with-context-v2
 # [2]: https://www.kaggle.com/code/mgoksu/0-807-sharing-my-trained-with-context-model
 
-# In[ ]:
 
 
 import os
@@ -60,35 +59,21 @@ MAX_INPUT = 512
 MODEL = 'microsoft/deberta-v3-large'
 
 
-# In[ ]:
 
 
-df_train = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/train_1_60k.csv")
+  
+df_train_1 = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data_final/train_data_final.csv")
+df_train_2 = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-60k-data-with-context-v2/all_12_with_context2_FIXED.csv")
 
-def get_context(text):
-    x = text.split(" ### ")
-    # remove empty strings
-    x = [x for x in x if len(x) > 0]
+df_train = pd.concat([df_train_1, df_train_2]).reset_index(drop=True)
 
-    assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}, x={x}"
-    return x[0]
+print(df_train.dtypes)
 
-
-df_train['context'] = df_train['prompt'].apply(lambda x: get_context(x))
-
-def get_prompt(text):
-    x = text.split(" ### ")
-    # remove empty strings
-    x = [x for x in x if len(x) > 0]
-    assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}"
-    return x[1]
-
-df_train['prompt'] = df_train['prompt'].apply(lambda x: get_prompt(x))
 
 df_train = df_train.fillna('')
 
 # remove Unnamed: 0
-df_train = df_train.drop(['Unnamed: 0'], axis=1)
+df_train = df_train.drop(['Unnamed: 0', 'source'], axis=1)
 
 
 # df_train = df_train[:1000]
@@ -96,7 +81,6 @@ df_train = df_train.drop(['Unnamed: 0'], axis=1)
 df_train
 
 
-# In[ ]:
 
 
 # df_valid = pd.read_csv('/kaggle/input/60k-data-with-context-v2/train_with_context2.csv')
@@ -104,7 +88,6 @@ df_train
 # df_valid.head()
 
 
-# In[ ]:
 
 
 df_valid_1 = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/wiki-sci-2-w-sentence-context/test_1.csv")
@@ -139,7 +122,6 @@ df_valid
 
 
 
-# In[ ]:
 
 
 # df_train = pd.read_csv('/kaggle/input/60k-data-with-context-v2/all_12_with_context2.csv')
@@ -154,7 +136,6 @@ df_valid
 # 
 # [1]: https://www.kaggle.com/code/radek1/new-dataset-deberta-v3-large-training
 
-# In[ ]:
 
 
 option_to_index = {option: idx for idx, option in enumerate('ABCDE')}
@@ -198,7 +179,6 @@ class DataCollatorForMultipleChoice:
         return batch
 
 
-# In[ ]:
 
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
@@ -208,7 +188,6 @@ dataset = Dataset.from_pandas(df_train)
 dataset
 
 
-# In[ ]:
 
 
 tokenized_dataset_valid = dataset_valid.map(preprocess, remove_columns=['prompt', 'context', 'A', 'B', 'C', 'D', 'E', 'answer'])
@@ -221,13 +200,11 @@ tokenized_dataset
 # 
 # [1]: https://huggingface.co/models
 
-# In[ ]:
 
 
 model = AutoModelForMultipleChoice.from_pretrained(MODEL)
 
 
-# In[ ]:
 
 
 # # NOTE PEFT REQUIRES US TO USE 1XP100 NOT 2XT4. I'M NOT SURE WHY.
@@ -235,7 +212,6 @@ model = AutoModelForMultipleChoice.from_pretrained(MODEL)
 #     !pip install --no-index --no-deps /kaggle/input/llm-whls/peft-0.4.0-py3-none-any.whl
 
 
-# In[ ]:
 
 
 if USE_PEFT:
@@ -251,7 +227,6 @@ if USE_PEFT:
     model.print_trainable_parameters()
 
 
-# In[ ]:
 
 
 if FREEZE_EMBEDDINGS:
@@ -270,7 +245,6 @@ if FREEZE_LAYERS>0:
 # 
 # [1]: https://www.kaggle.com/competitions/kaggle-llm-science-exam/discussion/435602
 
-# In[ ]:
 
 
 def map_at_3(predictions, labels):
@@ -301,7 +275,6 @@ def compute_metrics(p):
 # * increase LR and decrease epochs (this reduces work)
 # * use smaller models (this reduces weights to train)
 
-# In[ ]:
 
 
 training_args = TrainingArguments(
@@ -309,7 +282,7 @@ training_args = TrainingArguments(
     learning_rate=2e-6,
     per_device_train_batch_size=1,
     per_device_eval_batch_size=2,
-    num_train_epochs=30,
+    num_train_epochs=50,
     report_to='wandb',
     output_dir = f'./checkpoints_{VER}',
     overwrite_output_dir=True,
@@ -328,7 +301,6 @@ training_args = TrainingArguments(
 )
 
 
-# In[ ]:
 
 
 trainer = Trainer(
@@ -349,7 +321,6 @@ trainer.save_model(f'model_v{VER}')
 # # Verify Saved Model
 # During training, we see the MAP@3 validation score above. Let's load the saved model and compute it again here to verify that our model is saved correctly.
 
-# In[ ]:
 
 
 del model, trainer
@@ -363,7 +334,6 @@ else:
 trainer = Trainer(model=model)
 
 
-# In[ ]:
 
 
 test_df = pd.read_csv('/kaggle/input/60k-data-with-context-v2/train_with_context2.csv')
@@ -380,7 +350,6 @@ predictions_as_string = test_df['prediction'] = [
 
 # # Compute Validation Score
 
-# In[ ]:
 
 
 # https://www.kaggle.com/code/philippsinger/h2ogpt-perplexity-ranking
@@ -404,7 +373,6 @@ def MAP_at_3(predictions, true_items):
     return map_at_3 / U
 
 
-# In[ ]:
 
 
 m = MAP_at_3(test_df.prediction.values, test_df.answer.values)

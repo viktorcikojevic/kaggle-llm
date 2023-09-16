@@ -51,7 +51,7 @@ def main(wiki_sci_parquets, model_dir, input_csv, out_dir, out_name, k, max_cont
     
     
     # Number of csv files
-    num_files = math.ceil(len(csv) / 20)
+    num_files = math.ceil(len(csv) / 100)
 
     # Chunk the csv
     csv_chunks = np.array_split(csv, num_files)

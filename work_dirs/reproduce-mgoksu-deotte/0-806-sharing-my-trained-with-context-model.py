@@ -31,7 +31,7 @@
 
 import sys
 
-N_TOP_DOCS = 10
+N_TOP_DOCS = 5
 ## Parameter to determine how many relevant sentences to include
 NUM_SENTENCES_INCLUDE = 20
 
@@ -189,10 +189,13 @@ def process(slice_num):
 
 
 
-    trn = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv")
+    # trn = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/kaggle-llm-science-exam/train.csv")
     
-    # trn = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions_wiki_sci_2.csv")
-    # trn = trn[slice_num*1000: slice_num*1000+1000].reset_index(drop=True)
+    trn = pd.read_csv("/home/viktor/Documents/kaggle/kaggle_llm/data/data_dumps/more_questions/more_questions_raw_questions_wiki_sci_1_and_2.csv")
+    trn = trn[slice_num*1000: slice_num*1000+1000].reset_index(drop=True)
+    if len(trn) == 0:
+        return None
+    
     trn.fillna("", inplace=True)
     trn
 
@@ -468,9 +471,9 @@ def process(slice_num):
     
     
     if "answer" in trn.columns:
-        trn[["prompt", "context", "A", "B", "C", "D", "E", "answer"]].to_csv(f"./test_data/train_context_{slice_num}.csv", index=False)
+        trn[["prompt", "context", "A", "B", "C", "D", "E", "answer"]].to_csv(f"./train_data_1_and_2/train_context_{slice_num}.csv", index=False)
     else:
-        trn[["prompt", "context", "A", "B", "C", "D", "E"]].to_csv(f"./test_data/train_context_{slice_num}.csv", index=False)
+        trn[["prompt", "context", "A", "B", "C", "D", "E"]].to_csv(f"./train_data_1_and_2/train_context_{slice_num}.csv", index=False)
 
 
 

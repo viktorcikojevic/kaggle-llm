@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from tqdm import tqdm
 
-root_path = "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data"
+root_path = "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data_1_and_2"
 
 files = os.listdir(root_path)
 files = [file for file in files if file.endswith(".csv")]
@@ -21,5 +21,5 @@ for file in tqdm(files[1:], total=len(files[1:])):
 df_final = df_final.reset_index(drop=True)
 df_final = df_final[df_final['answer'].isin(['A', 'B', 'C', 'D', 'E'])]
     
-df_final.to_csv(f"train_data_final/train_data_final.csv", index=False)
+df_final.to_csv(f"train_data_1_and_2_final/train_data_final.csv", index=False)
 

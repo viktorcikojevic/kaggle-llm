@@ -71,6 +71,7 @@ def main(config_path: str,
         )  
         
         
+    print("train_df.dtypes", train_df.dtypes)
     
     print("train_df:")
     print(train_df.iloc[0])
@@ -100,8 +101,6 @@ def main(config_path: str,
     model_output_dir = os.path.join(work_dir_path, f"{model_name}-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}")
     model_output_dir = Path(model_output_dir)
     model_output_dir.mkdir(exist_ok=True, parents=True)
-    train_df.to_csv(model_output_dir / "train_df.csv")
-    val_df.to_csv(model_output_dir / "val_df.csv")
     logger.info(f"splitted dataset of size {len(train_df) + len(val_df)} -> {len(train_df)} & {len(val_df)}")
     logger.info("loaded data")
 
@@ -190,6 +189,29 @@ def main(config_path: str,
     print("val_df['prompt_len'].min()", val_df['prompt_len'].min())
     print("val_df['prompt_len'].max()", val_df['prompt_len'].max())
     
+    # print unique answers
+    print("train_df['answer'].unique()", train_df['answer'].unique())
+    print("val_df['answer'].unique()", val_df['answer'].unique())
+    
+    # take only prompt, context, A, B, C, D, E and answer (if there's an answer)
+    train_df = train_df[['prompt', 'context', 'A', 'B', 'C', 'D', 'E', 'answer']]
+    val_df = val_df[['prompt', 'context', 'A', 'B', 'C', 'D', 'E', 'answer']]
+    
+    train_df['prompt'] = train_df['prompt'].astype(str)
+    val_df['prompt'] = val_df['prompt'].astype(str)
+    train_df['context'] = train_df['context'].astype(str)
+    val_df['context'] = val_df['context'].astype(str)
+    train_df['answer'] = train_df['answer'].astype(str)
+    val_df['answer'] = val_df['answer'].astype(str)
+
+    options = 'ABCDE'
+    for option in options:
+        train_df[option] = train_df[option].astype(str)
+        val_df[option] = val_df[option].astype(str)
+    
+    
+    train_df.to_csv(model_output_dir / "train_df.csv")
+    val_df.to_csv(model_output_dir / "val_df.csv")
     
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer, preprocess_type, max_input)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer, preprocess_type, max_input)
@@ -208,9 +230,12 @@ def main(config_path: str,
         warmup_ratio=warmup_ratio,
         learning_rate=float(config["lr"]),
         per_device_train_batch_size=1,
-        load_best_model_at_end=True,
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
+        load_best_model_at_end=False,
+        evaluation_strategy="steps",
+        save_strategy="steps",
+        eval_steps=50,
+        save_steps=50,
+        logging_steps=50,
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,
         save_total_limit=config["save_total_limit"] if "save_total_limit" in config else 10,
@@ -230,9 +255,9 @@ def main(config_path: str,
         train_dataset=train_tokenized_dataset,
         eval_dataset=val_tokenized_dataset,
         compute_metrics=compute_map3_hf,
-        callbacks=[
-            EarlyStoppingCallback(early_stopping_patience=config["early_stopping_patience"]),
-        ],
+        # callbacks=[
+        #     EarlyStoppingCallback(early_stopping_patience=config["early_stopping_patience"]),
+        # ],
     )
     logger.info("initting trainer")
 

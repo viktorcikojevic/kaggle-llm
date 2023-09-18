@@ -1,7 +1,7 @@
 from typing import *
 from kaggle_llm.causal_lm_filters import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer
+from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer, LlamaTokenizer
 import transformers
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold

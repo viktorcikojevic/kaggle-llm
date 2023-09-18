@@ -17,6 +17,7 @@ openai.api_key = os.environ["OPENAI_API_KEY"]
 
 
 wiki_sci_df = pd.read_parquet("../data/wikipedia_pages2_w_embd/wiki_sci_embd_clusters.parquet").reset_index(drop=True)
+wiki_sci_df = wiki_sci_df.sample(n=4000, random_state=42).reset_index(drop=True)
 
 # calculate word count from 'text' column
 wiki_sci_df['word_count'] = wiki_sci_df['text'].apply(lambda x: len(str(x).split(" ")))
@@ -128,7 +129,7 @@ from pathlib import Path
 
 # out_file_name = "raw_questions"
 # out_file_name = "raw_questions_2"
-out_file_name = "raw_questions_wiki_sci_2"
+out_file_name = "raw_questions_wiki_sci_3"
 
 
 out_dir = Path(f"../data/data_dumps/{out_file_name}")
@@ -182,7 +183,7 @@ def generate_questions_for_cluster(cluster, wiki_sci_df_cluster_indices):
         
         
         randint = np.random.randint(0, 1000000)
-        out_path = f"{out_dir}/cluster-{cluster}-round-{cluster_question_idx}-{randint}-sumo.txt"
+        out_path = f"{out_dir}/cluster-{cluster}-round-{cluster_question_idx}-{randint}-sumo-8.txt"
         
         
         # take a random page and text from wiki_sci_df_cluster
@@ -306,7 +307,7 @@ def generate_questions(cluster):
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-n_jobs = 3
+n_jobs = 8
 
 wiki_sci_df.index = np.arange(len(wiki_sci_df))
 

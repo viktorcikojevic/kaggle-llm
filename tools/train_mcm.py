@@ -218,6 +218,16 @@ def main(config_path: str,
     # train_tokenized_dataset = get_mcp_tokenize_dataset_from_df(train_df, tokenizer)
     # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
+    
+    # save train_tokenized_dataset and val_tokenized_dataset as pickle files
+    import pickle
+    with open(model_output_dir / "train_tokenized_dataset.pkl", 'wb') as f:
+        pickle.dump(train_tokenized_dataset, f)
+    
+    with open(model_output_dir / "val_tokenized_dataset.pkl", 'wb') as f:
+        pickle.dump(val_tokenized_dataset, f)
+    
+    return
 
     logger.info("initting trainer")
     warmup_epochs = 1

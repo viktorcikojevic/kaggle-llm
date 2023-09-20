@@ -131,14 +131,15 @@ class DataCollatorForMultipleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
+    # max_length: Optional[int] = 512  # sometimes the max_length is 980+ which breaks the gpu
     pad_to_multiple_of: Optional[int] = None
 
-    def __call__(self, features: List[Dict[str, Any]]):
+    def __call__(self, features):
         batch_size = len(features)
         num_choices = len(features[0]["input_ids"])
         flattened_features = [
             [
-                {k: v[i] for k, v in feature.items() if k not in ("label", "labels")}
+                {k: v[i] for k, v in feature.items() if k not in ("context", "__index_level_0__", "label", "labels")}
                 for i in range(num_choices)
             ] for feature in features
         ]

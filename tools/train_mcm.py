@@ -219,15 +219,6 @@ def main(config_path: str,
     # val_tokenized_dataset = get_mcp_tokenize_dataset_from_df(val_df, tokenizer)
     logger.info("initted dataset")
     
-    # save train_tokenized_dataset and val_tokenized_dataset as pickle files
-    import pickle
-    with open(model_output_dir / "train_tokenized_dataset.pkl", 'wb') as f:
-        pickle.dump(train_tokenized_dataset, f)
-    
-    with open(model_output_dir / "val_tokenized_dataset.pkl", 'wb') as f:
-        pickle.dump(val_tokenized_dataset, f)
-    
-    return
 
     logger.info("initting trainer")
     warmup_epochs = 1
@@ -251,7 +242,9 @@ def main(config_path: str,
         save_total_limit=config["save_total_limit"] if "save_total_limit" in config else 10,
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
-        # fp16=False if 'use_8bit' in config and config['use_8bit'] else True,
+        remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
+        label_names=["label"],  # for peft
+        fp16=False if 'use_8bit' in config and config['use_8bit'] else True,
         # gradient_checkpointing=True,
         gradient_accumulation_steps=config["gradient_accumulation_steps"],
         # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),

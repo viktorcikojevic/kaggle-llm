@@ -207,7 +207,7 @@ def compute_map3_hf(preds: EvalPrediction) -> Dict:
         "answer": ["ABCDE"[label] for label in preds.label_ids]
     })
     map3 = get_map3(label_df=label_df, pred_df=preds_df)
-    return {"map3": map3}
+    return {"eval_map3": map3}
 
 
 def drop_df_cols_for_dataset(df: pd.DataFrame) -> pd.DataFrame:

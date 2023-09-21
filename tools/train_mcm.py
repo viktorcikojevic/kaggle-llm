@@ -105,6 +105,8 @@ def main(config_path: str,
     logger.info("loaded data")
 
     logger.info("initting models")
+    
+    
     model, tokenizer = build_peft_model(
         config["load_from"],
         use_peft=config["use_peft"],
@@ -113,18 +115,24 @@ def main(config_path: str,
         use_8bit=config["use_8bit"],
         **config["peft_kwargs"] if "peft_kwargs" in config else {},
     )
+
+    for param, param_name in zip(model.parameters(), model.state_dict().keys()):
+        if param.requires_grad == True:
+            print(f"param_name: {param_name}, requires_grad: {param.requires_grad}")
+        param.requires_grad = True
+    return
+    
     
     if 'freeze_embeddings' in config and config['freeze_embeddings'] and 'deberta' in config['load_from']:
         print('Freezing embeddings.')
         for param in model.deberta.embeddings.parameters():
             param.requires_grad = False
-    if 'freeze_layers' in config and config['freeze_layers'] and 'deberta' in config['load_from']:
+    if 'freeze_layers' in config and 'deberta' in config['load_from']:
         freeze_layers = config['freeze_layers']
         print(f'Freezing first {freeze_layers} layers.')
         for layer in model.deberta.encoder.layer[:freeze_layers]:
             for param in layer.parameters():
                 param.requires_grad = False
-    
     
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-6} Million")
     logger.info(f"model.num_parameters() = {model.num_parameters() * 1e-9} Billion")
@@ -212,6 +220,8 @@ def main(config_path: str,
     
     train_df.to_csv(model_output_dir / "train_df.csv")
     val_df.to_csv(model_output_dir / "val_df.csv")
+            
+    train_df = train_df.sample(n=100).reset_index(drop=True)        
     
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer, preprocess_type, max_input)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer, preprocess_type, max_input)
@@ -243,12 +253,14 @@ def main(config_path: str,
         report_to=config["report_to"],
         output_dir=str(model_output_dir),
         remove_unused_columns=False,  # HF infers the cols based on model's forward signature, and peft corrupts it
-        label_names=["label"],  # for peft
+        # label_names=["label"],  # for peft
         fp16=False if 'use_8bit' in config and config['use_8bit'] else True,
         # gradient_checkpointing=True,
         gradient_accumulation_steps=config["gradient_accumulation_steps"],
         # deepspeed=str((ROOT_PATH / "configs" / "deepspeed.json").resolve().absolute()),
     )
+    
+    
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -265,11 +277,12 @@ def main(config_path: str,
     logger.info("initting trainer")
 
     trainer.train()
-    # train_and_save_best_model_on_error(
-    #     trainer,
-    #     model_output_dir,
-    #     "best_map3_peft" if config["use_peft"] else "best_map3",
-    # )
+    # if "use_peft" in config and config["use_peft"]:
+        # train_and_save_best_model_on_error(
+        #     trainer,
+        #     model_output_dir,
+        #     "best_map3_peft" if config["use_peft"] else "best_map3",
+        # )
     
     if config["report_to"] == "wandb":
         wandb.finish()

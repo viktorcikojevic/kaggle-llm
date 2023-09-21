@@ -18,9 +18,7 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
     _keep_in_fp32_modules = [
         # "pooler",
         # "dropout",
-        "classifier",
-        # "classifier0",
-        # "classifier1",
+        "classifier"
     ]
 
     def __init__(self, config: LlamaConfig):
@@ -33,24 +31,17 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         # self.pooler = ContextPooler(config)
         # output_dim = self.pooler.output_dim
         self.classifier = nn.Linear(4096, 1)
-        # self.embed_dims = 4096
-        # self.classifier0 = nn.Linear(self.embed_dims, 128, bias=False)
-        # self.classifier1 = nn.Linear(128*NUM_CHOICES, NUM_CHOICES)
         drop_out = getattr(config, "cls_dropout", 0)
         self.dropout = StableDropout(drop_out)
         self.init_weights()
 
     def save_extra_modules(self, checkpoint_dir: Union[str, Path]):
         checkpoint_dir = Path(checkpoint_dir)
-        # torch.save(self.classifier.state_dict(), checkpoint_dir / "classifier.pt")
-        torch.save(self.classifier0.state_dict(), checkpoint_dir / "classifier0.pt")
-        torch.save(self.classifier1.state_dict(), checkpoint_dir / "classifier1.pt")
+        torch.save(self.classifier.state_dict(), checkpoint_dir / "classifier.pt")
 
     def load_extra_modules(self, checkpoint_dir: Union[str, Path]):
         checkpoint_dir = Path(checkpoint_dir)
-        # self.classifier.load_state_dict(torch.load(checkpoint_dir / "classifier.pt"))
-        self.classifier0.load_state_dict(torch.load(checkpoint_dir / "classifier0.pt"))
-        self.classifier1.load_state_dict(torch.load(checkpoint_dir / "classifier1.pt"))
+        self.classifier.load_state_dict(torch.load(checkpoint_dir / "classifier.pt"))
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -65,7 +56,6 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
-        stop_token_indices: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -79,7 +69,6 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
-        batch_size = input_ids.shape[0]
 
         flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
         flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
@@ -90,7 +79,7 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             if inputs_embeds is not None
             else None
         )
-        #
+
         outputs = self.model.forward(
             input_ids=flat_input_ids,
             attention_mask=flat_attention_mask,
@@ -100,15 +89,6 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        # outputs = self.model.forward(
-        #     input_ids=input_ids,
-        #     attention_mask=attention_mask,
-        #     inputs_embeds=inputs_embeds,
-        #     position_ids=position_ids,
-        #     output_attentions=output_attentions,
-        #     output_hidden_states=output_hidden_states,
-        #     return_dict=return_dict,
-        # )
 
         encoder_layer = outputs[0]
         # pooled_output = self.pooler(encoder_layer)
@@ -128,20 +108,9 @@ class LlamaModelForMultipleChoice(LlamaPreTrainedModel):
         logits = self.classifier(pooled_output)
         reshaped_logits = logits.view(-1, num_choices)
 
-        # pooled_output = torch.gather(encoder_layer, 1, stop_token_indices.unsqueeze(-1).tile(1, 1, self.embed_dims))
-        # compressed_output = self.classifier0(pooled_output).reshape((batch_size, -1))
-        # compressed_output = torch.nn.functional.gelu(compressed_output)
-        # reshaped_logits = self.classifier1(compressed_output)
-
         loss = None
         if labels is not None:
             loss = torch.nn.functional.cross_entropy(reshaped_logits, labels)
-        # if labels is not None:
-        #     one_hot_label = torch.nn.functional.one_hot(labels, num_classes=5)
-        #     loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        #         logits.reshape(-1, 1),
-        #         one_hot_label.float().reshape(-1, 1)
-        #     )
 
         if not return_dict:
             output = (reshaped_logits,) + outputs[1:]

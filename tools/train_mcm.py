@@ -117,10 +117,10 @@ def main(config_path: str,
     )
 
     for param, param_name in zip(model.parameters(), model.state_dict().keys()):
-        if param.requires_grad == True:
-            print(f"param_name: {param_name}, requires_grad: {param.requires_grad}")
-        param.requires_grad = True
-    return
+        # if param.requires_grad == True:
+        print(f"param_name: {param_name}, requires_grad: {param.requires_grad}")
+        # param.requires_grad = True
+    # return
     
     
     if 'freeze_embeddings' in config and config['freeze_embeddings'] and 'deberta' in config['load_from']:
@@ -231,7 +231,7 @@ def main(config_path: str,
     
 
     logger.info("initting trainer")
-    warmup_epochs = 1
+    warmup_epochs = config["warmup_epochs"]
     total_epochs = config["total_epochs"]
     warmup_ratio = warmup_epochs / total_epochs
     training_args = TrainingArguments(
@@ -246,7 +246,7 @@ def main(config_path: str,
         save_strategy="steps",
         eval_steps=50,
         save_steps=50,
-        logging_steps=50,
+        logging_steps=1,
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,
         save_total_limit=config["save_total_limit"] if "save_total_limit" in config else 10,

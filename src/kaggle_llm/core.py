@@ -116,8 +116,11 @@ def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict
     if preprocess_type == "deotte":
         first_sentence = [ "[CLS] " + example['context'] ] * 5
         second_sentences = [" #### " + example['prompt'] + " [SEP] " + example[option] + " [SEP]" for option in 'ABCDE']
-        tokenized_example = tokenizer(first_sentence, second_sentences, truncation='only_first', 
-                                    max_length=max_input, add_special_tokens=False)        
+        tokenized_example = tokenizer(first_sentence, 
+                                      second_sentences, 
+                                      truncation='only_first', 
+                                      max_length=max_input, 
+                                      add_special_tokens=False)        
         if "answer" in example:
             tokenized_example["label"] = option_to_index[example["answer"]]
         
@@ -331,7 +334,7 @@ class WrappedPeftModel(PeftModel):
 
 def train_and_save_best_model_on_error(
         trainer: Trainer,
-        model_output_dir: Path,
+        model_output_dir: str,
         best_model_dir_name: str = "best_map3"
 ):
     try:
@@ -343,7 +346,7 @@ def train_and_save_best_model_on_error(
     finally:
         if trainer.state.best_model_checkpoint is not None:
             print(f"trainer has some best models stored: {trainer.state.best_model_checkpoint}, setting it as the best checkpoint")
-            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir / best_model_dir_name))
+            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir) + "/" + best_model_dir_name)
         else:
             print(f"trainer has NO best models stored, returning")
             return

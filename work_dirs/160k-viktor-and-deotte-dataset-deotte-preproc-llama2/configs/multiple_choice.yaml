@@ -1,7 +1,7 @@
 inputs:
-  - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/test_data/train_context_0.csv"
-  # - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data_1_and_2_final/train_data_final.csv"
-  # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-60k-data-with-context-v2/all_12_with_context2.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/test_data/train_context_0.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data_1_and_2_final/train_data_final.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-60k-data-with-context-v2/all_12_with_context2.csv"
   # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/MMLU_17k_with_context2.csv"
   # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/OpenBook_with_context2.csv"
   # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/ScienceQA_with_context2.csv"
@@ -11,22 +11,21 @@ load_from: "/home/viktor/Documents/kaggle/kaggle_llm/data/llama2-7b-stem" # "/ho
 report_to: ["wandb"]
 lr: 2e-6
 use_8bit: True
-gradient_accumulation_steps: 4
+gradient_accumulation_steps: 32
 separate_prompt_and_context: False
 preprocess_type: "deotte"
-max_input: 420
+max_input: 300
 warmup_epochs: 0
-total_epochs: 30
+total_epochs: 300
 early_stopping_patience: 10
 use_peft: False
 peft_class: "AdaLoraConfig"
 peft_lr: 2e-6
-freeze_layers: 8
 peft_kwargs:
   r: 1024
   lora_alpha: 256
   lora_dropout: 0.1
-  # target_modules: ["q_proj", "v_proj"]
+  target_modules: ["q_proj", "v_proj"]
 
 
 eval_on: 

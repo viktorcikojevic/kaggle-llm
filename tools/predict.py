@@ -21,13 +21,16 @@ import pandas as pd
 import argparse
 import yaml
 import json
+from memory_profiler import profile
 
-
+# @profile
 def main(
         input_df_path: str,
         output_dir: str,
         base_models_dir: str = "",
         device: str = "cuda",
+        max_input: int = 1000000,
+        preprocess_type: str = "deotte",
 ):
     input_df_path = Path(input_df_path)
     assert input_df_path.is_file(), f"{input_df_path} not found"
@@ -59,7 +62,7 @@ def main(
             if base_models_dir != "":
                 base_model_path = Path(base_models_dir) / base_model_path.name
                 print(f"base_model_dir given, overriding peft base_model_path to: {base_model_path}")
-            model = AutoModelForMultipleChoice.from_pretrained(base_model_path, load_in_8bit=True, device_map="auto")
+            model = AutoModelForMultipleChoice.from_pretrained(base_model_path, load_in_8bit=True, device_map='auto')
             model = WrappedPeftModel.from_pretrained(model, abs_load_from)
             if hasattr(model.base_model, "load_extra_modules"):
                 model.base_model.load_extra_modules(abs_load_from)
@@ -74,8 +77,60 @@ def main(
 
         print(f"initting tokenizer and trainer [{i}]")
         print(submission_config)
+        
+        if 'separate_prompt_and_context' in submission_config and submission_config['separate_prompt_and_context']:
+            def get_context(text):
+                x = text.split(" ### ")
+                # remove empty strings
+                x = [x for x in x if len(x) > 0]
+                
+                assert len(x) == 2, f"Unsuccesful context splitting . len(x) = {len(x)}, x={x}"
+                return x[0]
+            
+            
+            df['context'] = df['prompt'].apply(lambda x: get_context(x))
+            
+            def get_prompt(text):
+                x = text.split(" ### ")
+                # remove empty strings
+                x = [x for x in x if len(x) > 0]
+                assert len(x) == 2, f"Unsuccesful prompt splitting . len(x) = {len(x)}"
+                return x[1]
+            
+            df['prompt'] = df['prompt'].apply(lambda x: get_prompt(x))
+        
+            # df['context_sentences'] = df['context'].apply(lambda x: x.split(". "))
+            # df = df.explode('context_sentences').reset_index(drop=True)
+            # df['context'] = df['context_sentences']
+            
+            
+            # give answer as context 
+            # df['context'] = df.apply(lambda x: x[x['answer']], axis=1)
+            
+            # df['context'] = df.apply(lambda x: x['context'][:900] + " " + x[x['answer']], axis=1)
+            
+            # df_1 = df.copy()
+            # df_1['context'] = df_1.apply(lambda x: x['A'], axis=1)
+            
+            # df_2 = df.copy()
+            # df_2['context'] = df_2.apply(lambda x: x['B'], axis=1)
+            
+            # df_3 = df.copy()
+            # df_3['context'] = df_3.apply(lambda x: x['C'], axis=1)
+            
+            # df_4 = df.copy()
+            # df_4['context'] = df_4.apply(lambda x: x['D'], axis=1)
+            
+            # df_5 = df.copy()
+            # df_5['context'] = df_5.apply(lambda x: x['E'], axis=1)
+            
+            # df = pd.concat([df_1, df_2, df_3, df_4, df_5]).reset_index(drop=True)
+            
+            
+        
+        
         if submission_config['tokenization'] == 'get_tokenize_dataset_from_df':
-            tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer)
+            tokenized_dataset = get_tokenize_dataset_from_df(df, tokenizer, preprocess_type, max_input)
         elif submission_config['tokenization'] == 'get_mcp_tokenize_dataset_from_df':
             tokenized_dataset = get_mcp_tokenize_dataset_from_df(df, tokenizer)
         training_args = TrainingArguments(
@@ -120,5 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", default=f"{str(ROOT_PATH)}/preds")
     parser.add_argument("--base-models-dir", default="")
     parser.add_argument("--device", default="cuda", type=str, help="cuda or cpu", required=False)
+    parser.add_argument("--max-input", default="cuda", type=int, help="number of inputs", required=False)
+    parser.add_argument("--preprocess_type", default="cuda", type=str, help="preprocess_type (deotte or viktor/sumo)", required=False)
     args, _ = parser.parse_known_args()
-    main(args.df_path, args.output_dir, args.base_models_dir, args.device)
+    main(args.df_path, args.output_dir, args.base_models_dir, args.device, args.max_input, args.preprocess_type)

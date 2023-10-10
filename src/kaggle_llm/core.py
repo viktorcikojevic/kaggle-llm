@@ -1,7 +1,7 @@
 from typing import *
 from kaggle_llm.causal_lm_filters import *
 from transformers.tokenization_utils_base import PaddingStrategy, PreTrainedTokenizerBase
-from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer
+from transformers import EvalPrediction, PreTrainedModel, Trainer, TrainingArguments, EarlyStoppingCallback, AutoTokenizer, LlamaTokenizer
 import transformers
 from sklearn.preprocessing import normalize
 from sklearn.model_selection import KFold
@@ -90,26 +90,43 @@ class DataCollatorForMultipleChoicePrompting:
         return batch
 
 
-def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any]):
+def multiple_choice_preprocess(tokenizer: PreTrainedTokenizerBase, example: Dict[str, Any], preprocess_type: str, max_input: int):
     """
     The example is expected to be a dictionary with keys "prompt", "A", "B", "C", "D", "E", and "answer".
     """
-    # The AutoModelForMultipleChoice class expects a set of question/answer pairs,
-    # so we"ll copy our question 5 times before tokenizing
-    first_sentence = [example["prompt"]] * 5
-    second_sentence = [example[option] for option in options]
-    # Our tokenizer will turn our text into token IDs BERT can understand
-    tokenized_example = tokenizer(first_sentence, second_sentence, truncation=True)
+    assert preprocess_type in ["sumo", "deotte"], "preprocess_type must be either sumo or deotte"
+    if preprocess_type == "sumo":
+        # The AutoModelForMultipleChoice class expects a set of question/answer pairs,
+        # so we"ll copy our question 5 times before tokenizing
+        first_sentence = [example["prompt"]] * 5
+        second_sentence = [example[option] for option in options]
+        # Our tokenizer will turn our text into token IDs BERT can understand
+        tokenized_example = tokenizer(first_sentence, second_sentence, truncation=True)
 
-    # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
-    # print(f"{_max_length = }")
-    # if _max_length > 350:
-    #     print(example)
-    #     assert False, ":D"
+        # _max_length = max([len(x) for x in tokenized_example["input_ids"]])
+        # print(f"{_max_length = }")
+        # if _max_length > 350:
+        #     print(example)
+        #     assert False, ":D"
 
-    if "answer" in example:
-        tokenized_example["label"] = option_to_index[example["answer"]]
-    return tokenized_example
+        if "answer" in example:
+            tokenized_example["label"] = option_to_index[example["answer"]]
+        return tokenized_example
+
+    if preprocess_type == "deotte":
+        first_sentence = [ "[CLS] " + example['context'] ] * 5
+        second_sentences = [" #### " + example['prompt'] + " [SEP] " + example[option] + " [SEP]" for option in 'ABCDE']
+        tokenized_example = tokenizer(first_sentence, 
+                                      second_sentences, 
+                                      truncation='only_first', 
+                                      max_length=max_input, 
+                                      add_special_tokens=False)        
+        if "answer" in example:
+            tokenized_example["label"] = option_to_index[example["answer"]]
+        
+        return tokenized_example
+        
+        
 
 
 @dataclass
@@ -117,14 +134,15 @@ class DataCollatorForMultipleChoice:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str, PaddingStrategy] = True
     max_length: Optional[int] = None
+    # max_length: Optional[int] = 512  # sometimes the max_length is 980+ which breaks the gpu
     pad_to_multiple_of: Optional[int] = None
 
-    def __call__(self, features: List[Dict[str, Any]]):
+    def __call__(self, features):
         batch_size = len(features)
         num_choices = len(features[0]["input_ids"])
         flattened_features = [
             [
-                {k: v[i] for k, v in feature.items() if k not in ("label", "labels")}
+                {k: v[i] for k, v in feature.items() if k not in ("context", "__index_level_0__", "label", "labels")}
                 for i in range(num_choices)
             ] for feature in features
         ]
@@ -192,7 +210,7 @@ def compute_map3_hf(preds: EvalPrediction) -> Dict:
         "answer": ["ABCDE"[label] for label in preds.label_ids]
     })
     map3 = get_map3(label_df=label_df, pred_df=preds_df)
-    return {"map3": map3}
+    return {"eval_map3": map3}
 
 
 def drop_df_cols_for_dataset(df: pd.DataFrame) -> pd.DataFrame:
@@ -214,6 +232,7 @@ def load_train_and_val_df(
     train_dfs = []
     val_dfs = []
     for ip in input_paths:
+        print(f"Loading {ip} ...")
         df = pd.read_csv(ip)
         df = df.fillna("None") # Weird bug: when loading "None" string, it becomes NaN in the pandas df
         df = drop_df_cols_for_dataset(df)
@@ -231,6 +250,7 @@ def load_train_and_val_df(
     dbg_train_df = train_df.copy()
     dbg_train_df["prompt_wc"] = dbg_train_df["prompt"].apply(count_words)
     for c in choices:
+        dbg_train_df[c] = dbg_train_df[c].astype(str)
         dbg_train_df[f"{c}_wc"] = dbg_train_df[c].apply(count_words)
     dbg_train_df["choice_wc"] = dbg_train_df[[f"{c}_wc" for c in choices]].max(axis=1)
     dbg_train_df["all_wc"] = dbg_train_df["prompt_wc"] + dbg_train_df["choice_wc"]
@@ -249,11 +269,11 @@ def load_train_and_val_df(
     return train_df, val_df
 
 
-def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase):
+def get_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedTokenizerBase, preprocess_type: str, max_input: int):
     dataset = Dataset.from_pandas(df)
     topic_cols = [c for c in df.columns if "topic" in c]
     return dataset.map(
-        lambda example: multiple_choice_preprocess(tokenizer, example),
+        lambda example: multiple_choice_preprocess(tokenizer, example, preprocess_type, max_input),
         remove_columns=(
             ["prompt", "A", "B", "C", "D", "E"]
             + (["answer"] if "answer" in df else [])
@@ -273,7 +293,8 @@ def get_mcp_tokenize_dataset_from_df(df: pd.DataFrame, tokenizer: PreTrainedToke
             + (["answer"] if "answer" in df else [])
             + topic_cols
             + (["index"] if "index" in df else [])
-        )
+        ),
+        nproc=4,
     )
 
 
@@ -313,7 +334,7 @@ class WrappedPeftModel(PeftModel):
 
 def train_and_save_best_model_on_error(
         trainer: Trainer,
-        model_output_dir: Path,
+        model_output_dir: str,
         best_model_dir_name: str = "best_map3"
 ):
     try:
@@ -325,7 +346,7 @@ def train_and_save_best_model_on_error(
     finally:
         if trainer.state.best_model_checkpoint is not None:
             print(f"trainer has some best models stored: {trainer.state.best_model_checkpoint}, setting it as the best checkpoint")
-            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir / best_model_dir_name))
+            os.symlink(trainer.state.best_model_checkpoint, str(model_output_dir) + "/" + best_model_dir_name)
         else:
             print(f"trainer has NO best models stored, returning")
             return
@@ -371,6 +392,7 @@ def build_peft_model(
 ) -> Tuple[WrappedPeftModel, PreTrainedTokenizerBase]:
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     transformer_constructor = getattr(transformers, transformer_class)
+    print(transformer_constructor)
     if use_8bit:
         model = transformer_constructor.from_pretrained(load_from, load_in_8bit=True)
         count_conversion_ratio(model, True)

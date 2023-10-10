@@ -14,6 +14,12 @@ These are actually bad submissions! These were trained on Kaggle data!
 
 # Experiment Log
 
+
+## Scores
+
+<img src="assets/scores.png" alt="drawing" width="500"/>
+
+
 ## 2023-08-28
 
 
@@ -27,7 +33,7 @@ These are actually bad submissions! These were trained on Kaggle data!
 <!-- ![Alt text](assets/image-evolution.png) -->
 
 <img src="assets/W&B Chart 29_08_2023, 14_22_34.png" alt="drawing" width="500"/>
-<img src="assets/W&B Chart 29_08_2023, 14_22_34-2.png" alt="drawing" width="500"/>
+
 
 
 ## 2023-08-27

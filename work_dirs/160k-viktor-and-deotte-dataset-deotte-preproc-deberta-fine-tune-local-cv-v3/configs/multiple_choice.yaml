@@ -1,0 +1,31 @@
+inputs:
+  - "/home/viktor/Documents/kaggle/kaggle_llm/notebooks/generate-v5-dataset/train_with_context.csv"
+  - "/home/viktor/Documents/kaggle/kaggle_llm/notebooks/generate-v6-dataset/train_with_context.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/reproduce-mgoksu-deotte/train_data_1_and_2_final/train_data_final.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-60k-data-with-context-v2/all_12_with_context2.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/MMLU_17k_with_context2.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/OpenBook_with_context2.csv"
+  # - "/home/viktor/Documents/kaggle/kaggle_llm/data/cdeotte-40k/ScienceQA_with_context2.csv"
+
+load_from:  "microsoft/deberta-v3-large" # "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/deberta-v3-data-wiki_sci-with-wiki-sentence-context-eval-kaggle-all-folds-grad-accum-128/deberta-v3-large-2023-08-30-13-15-21/checkpoint-1143"
+
+report_to: ["wandb"]
+lr: 2e-6
+use_peft: False
+peft_class: "AdaLoraConfig"
+use_8bit: False
+gradient_accumulation_steps: 32
+separate_prompt_and_context: False
+preprocess_type: "deotte"
+max_input: 450
+warmup_epochs: 0
+total_epochs: 10
+early_stopping_patience: 10
+peft_lr: 5e-6
+eval_on: 
+  - "/home/viktor/Documents/kaggle/kaggle_llm/work_dirs/160k-viktor-and-deotte-dataset-deotte-preproc-deberta-window-inference/test_with_context.csv"
+eval_all_folds: True
+save_total_limit: 10
+# fold:
+#   num: 0
+#   of: 10

@@ -222,8 +222,8 @@ def main(config_path: str,
     train_df.to_csv(model_output_dir / "train_df.csv")
     val_df.to_csv(model_output_dir / "val_df.csv")
             
-    train_df = train_df.sample(n=20, random_state=42).reset_index(drop=True)        
-    val_df = train_df.copy()
+    # train_df = train_df.sample(n=20, random_state=42).reset_index(drop=True)        
+    # val_df = train_df.copy()
     
     train_tokenized_dataset = get_tokenize_dataset_from_df(train_df, tokenizer, preprocess_type, max_input)
     val_tokenized_dataset = get_tokenize_dataset_from_df(val_df, tokenizer, preprocess_type, max_input)
@@ -246,8 +246,8 @@ def main(config_path: str,
         load_best_model_at_end=False,
         evaluation_strategy="steps",
         save_strategy="steps",
-        eval_steps=20,
-        save_steps=50,
+        eval_steps=50,
+        save_steps=10,
         logging_steps=1,
         per_device_eval_batch_size=2,
         num_train_epochs=total_epochs,

@@ -1,8 +1,8 @@
 models:
-  - "deberta-v3-data-wiki_sci-with-wiki-sentence-context-eval-kaggle-all-folds-grad-accum-128-60k-viktor-dataset-deotte-preproc/deberta-v3-large-2023-09-10-00-56-02/checkpoint-22500"
+  - "160k-viktor-and-deotte-dataset-deotte-preproc-deberta-context-12/peft-checkpoint-14450-2023-09-26-00-09-57/checkpoint-50"
 
 configs:
-  - "deberta-v3-data-wiki_sci-with-wiki-sentence-context-eval-kaggle-all-folds-grad-accum-128-60k-viktor-dataset-deotte-preproc/configs"
+  - "160k-viktor-and-deotte-dataset-deotte-preproc-deberta-context-12/configs"
 
 
 use_peft: False

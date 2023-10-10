@@ -1,4 +1,6 @@
 from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.longformer.configuration_longformer import LongformerConfig
+from transformers.models.longformer.modeling_longformer import LongformerModel, LongformerPreTrainedModel
 from transformers.models.llama.modeling_llama import LlamaPreTrainedModel, LlamaModel
 from transformers.modeling_outputs import MultipleChoiceModelOutput
 from transformers import AutoModelForMultipleChoice, AutoConfig
@@ -269,3 +271,149 @@ class DebertaV2ForMultipleChoice2(DebertaV2PreTrainedModel):
 
 
 # AutoModelForMultipleChoice.register(DebertaV2Config, DebertaV2ForMultipleChoice2)
+
+
+
+# class LongformerForMultipleChoiceCustom(LongformerPreTrainedModel):
+#     def __init__(self, config):
+#         super().__init__(config)
+
+#         self.longformer = LongformerModel(config)
+#         self.classifier = nn.Linear(config.hidden_size, 1)
+#         self.init_weights()
+
+#     def forward(
+#         self,
+#         input_ids=None,
+#         attention_mask=None,
+#         token_type_ids=None,
+#         position_ids=None,
+#         head_mask=None,
+#         inputs_embeds=None,
+#         labels=None,
+#         output_attentions=None,
+#         output_hidden_states=None,
+#         return_dict=None,
+#     ):
+#         num_choices = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
+
+#         input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+#         attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
+#         token_type_ids = token_type_ids.view(-1, token_type_ids.size(-1)) if token_type_ids is not None else None
+#         position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
+#         inputs_embeds = inputs_embeds.view(-1, inputs_embeds.size(-2), inputs_embeds.size(-1)) if inputs_embeds is not None else None
+
+#         global_attention_mask = torch.zeros(input_ids.shape, dtype=torch.long, device=input_ids.device)
+
+
+
+#         outputs = self.longformer(
+#             input_ids,
+#             attention_mask=attention_mask,
+#             token_type_ids=token_type_ids,
+#             position_ids=position_ids,
+#             head_mask=head_mask,
+#             inputs_embeds=inputs_embeds,
+#             output_attentions=output_attentions,
+#             output_hidden_states=output_hidden_states,
+#             return_dict=return_dict,
+#             global_attention_mask=global_attention_mask
+#         )
+
+#         sequence_output = outputs[0]
+#         pooled_output = sequence_output[:, 0]  # take <s> token (equiv. to [CLS])
+#         logits = self.classifier(pooled_output)  # (batch_size * num_choices, 1)
+#         reshaped_logits = logits.view(-1, num_choices)  # (batch_size, num_choices)
+
+#         loss = None
+#         if labels is not None:
+#             loss_fct = nn.CrossEntropyLoss()
+#             loss = loss_fct(reshaped_logits, labels)
+
+#         if not return_dict:
+#             output = (reshaped_logits,) + outputs[1:]
+#             return ((loss,) + output) if loss is not None else output
+        
+        
+#         return MultipleChoiceModelOutput(
+#             loss=loss,
+#             logits=reshaped_logits,
+#             hidden_states=outputs.hidden_states,
+#             attentions=outputs.attentions,
+#         )
+
+# AutoModelForMultipleChoice.register(LongformerConfig, LongformerForMultipleChoiceCustom)
+
+
+
+
+# # class FalconModelForMultipleChoice(FalconPreTrainedModel):
+# #     def __init__(self, config: FalconConfig):
+# #         super().__init__(config)
+        
+# #         self.falcon = FalconModel(config)
+# #         self.classifier = nn.Linear(config.hidden_size, 1)  # You can adjust the dimensions here
+# #         self.dropout = nn.Dropout(0.1)
+        
+# #         self.init_weights()
+        
+# #     def get_input_embeddings(self):
+# #         return self.falcon.word_embeddings
+    
+# #     def set_input_embeddings(self, new_embeddings: torch.Tensor):
+# #         self.falcon.word_embeddings = new_embeddings
+        
+        
+# #     def forward(
+# #         self,
+# #         input_ids: Optional[torch.Tensor] = None,
+# #         attention_mask: Optional[torch.Tensor] = None,
+# #         position_ids: Optional[torch.Tensor] = None,
+# #         labels: Optional[torch.Tensor] = None,
+# #         output_attentions: Optional[bool] = None,
+# #         output_hidden_states: Optional[bool] = None,
+# #         return_dict: Optional[bool] = None,
+# #     ) -> Union[Tuple, MultipleChoiceModelOutput]:
+        
+# #         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+# #         num_choices = input_ids.shape[1] if input_ids is not None else None
+        
+# #         flat_input_ids = input_ids.view(-1, input_ids.size(-1)) if input_ids is not None else None
+# #         flat_attention_mask = attention_mask.view(-1, attention_mask.size(-1)) if attention_mask is not None else None
+# #         flat_position_ids = position_ids.view(-1, position_ids.size(-1)) if position_ids is not None else None
+        
+# #         outputs = self.falcon(
+# #             input_ids=flat_input_ids,
+# #             attention_mask=flat_attention_mask,
+# #             position_ids=flat_position_ids,
+# #             output_attentions=output_attentions,
+# #             output_hidden_states=output_hidden_states,
+# #             return_dict=return_dict,
+# #         )
+        
+# #         last_hidden_state = outputs[0]
+        
+# #         # Now we will use the final hidden state to predict the class
+# #         pooled_output = last_hidden_state[:, 0]
+# #         pooled_output = self.dropout(pooled_output)
+# #         logits = self.classifier(pooled_output)
+# #         reshaped_logits = logits.view(-1, num_choices)
+        
+# #         loss = None
+# #         if labels is not None:
+# #             loss_fct = nn.CrossEntropyLoss()
+# #             loss = loss_fct(reshaped_logits, labels)
+        
+# #         if not return_dict:
+# #             output = (reshaped_logits,) + outputs[1:]
+# #             return ((loss,) + output) if loss is not None else output
+        
+# #         return MultipleChoiceModelOutput(
+# #             loss=loss,
+# #             logits=reshaped_logits,
+# #             hidden_states=outputs.hidden_states,
+# #             attentions=outputs.attentions,
+# #         )
+
+# # # Registering the class for AutoModelForMultipleChoice
+# # AutoModelForMultipleChoice.register(FalconConfig, FalconModelForMultipleChoice)

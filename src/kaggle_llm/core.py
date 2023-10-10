@@ -392,6 +392,7 @@ def build_peft_model(
 ) -> Tuple[WrappedPeftModel, PreTrainedTokenizerBase]:
     tokenizer = AutoTokenizer.from_pretrained(load_from)
     transformer_constructor = getattr(transformers, transformer_class)
+    print(transformer_constructor)
     if use_8bit:
         model = transformer_constructor.from_pretrained(load_from, load_in_8bit=True)
         count_conversion_ratio(model, True)
